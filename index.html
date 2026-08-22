@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Stok Ayam Gepuk</title>
+<style>
+  :root{
+    --bg:#fff7ed; --card:#ffffff; --ink:#2b1a12; --sub:#8a6a55;
+    --brand:#d9480f; --brand-dark:#b53c0d; --accent:#2f9e44; --danger:#e03131;
+    --line:#f1e0d0; --chip:#fff0e0;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:90px;}
+  header{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;padding:18px 16px 22px;border-radius:0 0 20px 20px;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+  header h1{margin:0 0 2px;font-size:1.3rem;}
+  header .sub{font-size:.8rem;opacity:.9;}
+  .cycle-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .cycle-pill{background:rgba(255,255,255,.18);border-radius:12px;padding:8px 10px;font-size:.72rem;flex:1;min-width:120px;}
+  .cycle-pill b{display:block;font-size:.95rem;}
+  .due{background:#ffe066;color:#5c3a00;font-weight:700;}
+  nav.tabs{display:flex;position:sticky;top:0;background:var(--bg);z-index:5;padding:10px 12px 4px;gap:8px;}
+  nav.tabs button{flex:1;padding:9px 4px;border:none;border-radius:10px;background:var(--chip);color:var(--sub);font-weight:600;font-size:.82rem;}
+  nav.tabs button.active{background:var(--brand);color:#fff;}
+  main{padding:6px 12px 12px;}
+  .cat{margin-top:16px;}
+  .cat h2{font-size:.95rem;margin:0 0 8px;color:var(--brand-dark);display:flex;align-items:center;gap:6px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.03);}
+  .item-row{display:grid;grid-template-columns:1fr 66px 66px 74px;gap:8px;align-items:center;}
+  .item-row .name{font-weight:600;font-size:.88rem;}
+  .item-row .name small{display:block;font-weight:400;color:var(--sub);font-size:.72rem;}
+  .item-row input[type=number]{width:100%;padding:6px 4px;border:1px solid var(--line);border-radius:8px;text-align:center;font-size:.85rem;}
+  .label-mini{font-size:.62rem;color:var(--sub);text-align:center;display:block;margin-bottom:2px;}
+  .buy-badge{text-align:center;font-weight:700;font-size:.85rem;padding:6px 2px;border-radius:8px;background:#ebfbee;color:var(--accent);}
+  .buy-badge.zero{background:#f1f3f5;color:#adb5bd;}
+  .row-actions{text-align:right;margin-top:4px;}
+  .row-actions button{background:none;border:none;color:var(--sub);font-size:.7rem;text-decoration:underline;padding:2px 4px;}
+  .add-item-btn{width:100%;padding:10px;border:2px dashed var(--brand);background:none;color:var(--brand);border-radius:12px;font-weight:600;margin-top:6px;}
+  .sticky-bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 -4px 14px rgba(0,0,0,.08);z-index:10;}
+  .sticky-bottom .count{font-size:.78rem;color:var(--sub);flex:0 0 auto;}
+  .sticky-bottom .count b{color:var(--brand);font-size:1.1rem;display:block;}
+  .btn-main{flex:1;background:var(--brand);color:#fff;border:none;padding:13px;border-radius:12px;font-weight:700;font-size:.95rem;}
+  .btn-main:disabled{background:#ccc;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+  .modal{background:#fff;border-radius:18px 18px 0 0;padding:18px 16px 20px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;}
+  .modal h3{margin-top:0;}
+  .order-list-text{white-space:pre-wrap;background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.82rem;font-family:ui-monospace,monospace;max-height:280px;overflow-y:auto;}
+  .modal-actions{display:flex;gap:8px;margin-top:12px;}
+  .modal-actions button{flex:1;padding:11px;border-radius:10px;border:none;font-weight:600;font-size:.85rem;}
+  .btn-wa{background:#25d366;color:#fff;}
+  .btn-copy{background:var(--chip);color:var(--brand-dark);}
+  .btn-confirm{background:var(--accent);color:#fff;margin-top:8px;width:100%;padding:12px;border:none;border-radius:10px;font-weight:700;}
+  .btn-close{background:none;color:var(--sub);border:1px solid var(--line)!important;}
+  .empty{color:var(--sub);font-size:.85rem;text-align:center;padding:30px 10px;}
+  .hist-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;}
+  .hist-card .d{font-weight:700;font-size:.85rem;color:var(--brand-dark);}
+  .hist-card .meta{font-size:.75rem;color:var(--sub);margin:2px 0 6px;}
+  .hist-detail{font-size:.78rem;color:var(--ink);display:none;}
+  .hist-detail.open{display:block;}
+  .settings-block{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;}
+  .settings-block h3{margin:0 0 8px;font-size:.88rem;}
+  .settings-block label{display:block;font-size:.78rem;color:var(--sub);margin:8px 0 3px;}
+  .settings-block input, .settings-block select, .settings-block textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:.85rem;}
+  .settings-block .row2{display:flex;gap:8px;}
+  .settings-block .row2 > *{flex:1;}
+  .btn-secondary{background:var(--chip);color:var(--brand-dark);border:none;padding:9px;border-radius:8px;font-weight:600;font-size:.82rem;margin-top:8px;width:100%;}
+  .btn-danger-outline{background:#fff5f5;color:var(--danger);border:1px solid #ffc9c9;padding:9px;border-radius:8px;font-weight:600;font-size:.8rem;width:100%;margin-top:6px;}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:9px 16px;border-radius:20px;font-size:.8rem;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍗 Stok Ayam Gepuk</h1>
+  <div class="sub" id="todayLabel"></div>
+  <div class="cycle-bar">
+    <div class="cycle-pill">Belanja terakhir<b id="lastOrderLabel">-</b></div>
+    <div class="cycle-pill" id="nextOrderPill">Belanja berikutnya<b id="nextOrderLabel">-</b></div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="belanja" class="active">Belanja</button>
+  <button data-tab="riwayat">Riwayat</button>
+  <button data-tab="pengaturan">Pengaturan</button>
+</nav>
+
+<main id="belanjaTab"></main>
+<main id="riwayatTab" style="display:none"></main>
+<main id="pengaturanTab" style="display:none"></main>
+
+<div class="sticky-bottom" id="stickyBottom">
+  <div class="count">Perlu dibeli<b id="totalBuyCount">0</b></div>
+  <button class="btn-main" id="openOrderBtn">📋 Buat Daftar Belanja</button>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'ayamGepukStock_v1';
+const CATS = ["Ayam & Protein","Sembako & Minyak","Bumbu Basah & Sambal","Lalapan & Sayur","Minuman & Kemasan","Gas & Operasional"];
+
+function defaultState(){
+  const mk = (category,name,unit,par) => ({id: crypto.randomUUID(), category, name, unit, par, stock: 0});
+  return {
+    items: [
+      mk("Ayam & Protein","Ayam potong (fillet paha/dada)","kg",30),
+      mk("Ayam & Protein","Tahu","papan",10),
+      mk("Ayam & Protein","Tempe","papan",10),
+      mk("Sembako & Minyak","Beras","kg",20),
+      mk("Sembako & Minyak","Minyak goreng","liter",10),
+      mk("Sembako & Minyak","Tepung terigu","kg",6),
+      mk("Sembako & Minyak","Tepung beras/maizena","kg",3),
+      mk("Sembako & Minyak","Telur ayam","kg",5),
+      mk("Sembako & Minyak","Gula pasir","kg",2),
+      mk("Sembako & Minyak","Gula merah","kg",2),
+      mk("Sembako & Minyak","Garam","kg",1),
+      mk("Sembako & Minyak","Kaldu bubuk/penyedap","bungkus",6),
+      mk("Bumbu Basah & Sambal","Cabai rawit merah","kg",6),
+      mk("Bumbu Basah & Sambal","Cabai rawit hijau","kg",4),
+      mk("Bumbu Basah & Sambal","Cabai merah keriting","kg",3),
+      mk("Bumbu Basah & Sambal","Bawang merah","kg",4),
+      mk("Bumbu Basah & Sambal","Bawang putih","kg",3),
+      mk("Bumbu Basah & Sambal","Tomat","kg",3),
+      mk("Bumbu Basah & Sambal","Terasi","kg",0.5),
+      mk("Bumbu Basah & Sambal","Jeruk limau","kg",2),
+      mk("Bumbu Basah & Sambal","Daun jeruk/serai/lengkuas","ikat",4),
+      mk("Lalapan & Sayur","Timun","kg",6),
+      mk("Lalapan & Sayur","Kol","kg",4),
+      mk("Lalapan & Sayur","Kemangi","ikat",8),
+      mk("Lalapan & Sayur","Kacang panjang","ikat",4),
+      mk("Minuman & Kemasan","Es batu","kg",20),
+      mk("Minuman & Kemasan","Teh celup","box",2),
+      mk("Minuman & Kemasan","Air mineral gelas","dus",3),
+      mk("Minuman & Kemasan","Kantong plastik","pack",4),
+      mk("Minuman & Kemasan","Box nasi/styrofoam","pack",6),
+      mk("Minuman & Kemasan","Sedotan","pack",2),
+      mk("Minuman & Kemasan","Tisu makan","pack",4),
+      mk("Minuman & Kemasan","Saos sachet/botol","botol",4),
+      mk("Gas & Operasional","Gas LPG 3kg","tabung",4),
+      mk("Gas & Operasional","Kertas nasi/minyak","pack",3),
+    ],
+    suppliers: {},
+    history: [],
+    lastOrderDate: null,
+    cycleDays: 2
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  const s = defaultState();
+  saveState(s);
+  return s;
+}
+function saveState(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+let state = loadState();
+let activeTab = 'belanja';
+
+function fmtDate(d){
+  if(!d) return '-';
+  const dt = new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
+}
+function todayStr(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function addDays(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function buyQty(item){
+  const q = Math.max(0, item.par - item.stock);
+  return Math.round(q*10)/10;
+}
+function fmtNum(n){
+  return (Math.round(n*10)/10).toString();
+}
+
+function renderHeader(){
+  document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('lastOrderLabel').textContent = state.lastOrderDate ? fmtDate(state.lastOrderDate) : 'Belum ada';
+  const nextPill = document.getElementById('nextOrderPill');
+  if(state.lastOrderDate){
+    const next = addDays(state.lastOrderDate, state.cycleDays);
+    document.getElementById('nextOrderLabel').textContent = fmtDate(next);
+    if(next <= todayStr()){
+      nextPill.classList.add('due');
+      document.getElementById('nextOrderLabel').textContent += ' ⚠️ Saatnya!';
+    } else {
+      nextPill.classList.remove('due');
+    }
+  } else {
+    document.getElementById('nextOrderLabel').textContent = 'Hari ini';
+    nextPill.classList.add('due');
+  }
+}
+
+function renderBelanja(){
+  const root = document.getElementById('belanjaTab');
+  root.innerHTML = '';
+  CATS.forEach(cat=>{
+    const items = state.items.filter(i=>i.category===cat);
+    if(items.length===0) return;
+    const catDiv = document.createElement('div');
+    catDiv.className = 'cat';
+    catDiv.innerHTML = `<h2>${cat}</h2>`;
+    items.forEach(item=>{
+      const bq = buyQty(item);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="item-row">
+          <div class="name">${item.name}<small>Target 2 hari: ${fmtNum(item.par)} ${item.unit}</small></div>
+          <div>
+            <span class="label-mini">Sisa</span>
+            <input type="number" min="0" step="any" value="${item.stock}" data-id="${item.id}" data-field="stock">
+          </div>
+          <div>
+            <span class="label-mini">Target</span>
+            <input type="number" min="0" step="any" value="${item.par}" data-id="${item.id}" data-field="par">
+          </div>
+          <div class="buy-badge ${bq===0?'zero':''}">${bq>0? '+'+fmtNum(bq) : '✓'}<br><small style="font-weight:400">${item.unit}</small></div>
+        </div>
+        <div class="row-actions"><button data-del="${item.id}">Hapus item</button></div>
+      `;
+      catDiv.appendChild(card);
+    });
+    root.appendChild(catDiv);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'add-item-btn';
+  addBtn.textContent = '+ Tambah Bahan Baru';
+  addBtn.onclick = openAddItemModal;
+  root.appendChild(addBtn);
+
+  root.querySelectorAll('input[data-field]').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const id = e.target.dataset.id;
+      const field = e.target.dataset.field;
+      const item = state.items.find(i=>i.id===id);
+      item[field] = parseFloat(e.target.value)||0;
+      saveState(state);
+      updateTotalBuy();
+      // update just this badge without full re-render to keep focus
+      const row = e.target.closest('.card').querySelector('.buy-badge');
+      const bq = buyQty(item);
+      row.className = 'buy-badge ' + (bq===0?'zero':'');
+      row.innerHTML = `${bq>0? '+'+fmtNum(bq) : '✓'}<br><small style="font-weight:400">${item.unit}</small>`;
+      e.target.closest('.card').querySelector('.name small').textContent = `Target 2 hari: ${fmtNum(item.par)} ${item.unit}`;
+    });
+  });
+  root.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      if(confirm('Hapus bahan ini dari daftar?')){
+        state.items = state.items.filter(i=>i.id!==btn.dataset.del);
+        saveState(state);
+        renderBelanja();
+        updateTotalBuy();
+      }
+    });
+  });
+  updateTotalBuy();
+}
+
+function updateTotalBuy(){
+  const list = state.items.filter(i=>buyQty(i)>0);
+  document.getElementById('totalBuyCount').textContent = list.length;
+  document.getElementById('openOrderBtn').disabled = list.length===0;
+}
+
+function buildOrderText(){
+  const lines = [`*Daftar Belanja Ayam Gepuk*`, `Tanggal: ${fmtDate(todayStr())}`, ``];
+  let any = false;
+  CATS.forEach(cat=>{
+    const items = state.items.filter(i=>i.category===cat && buyQty(i)>0);
+    if(items.length===0) return;
+    any = true;
+    lines.push(`*${cat}*`);
+    items.forEach(i=> lines.push(`- ${i.name}: ${fmtNum(buyQty(i))} ${i.unit}`));
+    lines.push('');
+  });
+  if(!any) lines.push('Semua stok masih aman, tidak perlu belanja.');
+  return lines.join('\n').trim();
+}
+
+function openAddItemModal(){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+  <div class="modal-overlay" id="ovAdd">
+    <div class="modal">
+      <h3>Tambah Bahan Baru</h3>
+      <label class="label-mini" style="text-align:left">Nama bahan</label>
+      <input id="newName" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;" placeholder="mis. Daun pisang">
+      <label class="label-mini" style="text-align:left">Kategori</label>
+      <select id="newCat" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;">
+        ${CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
+      </select>
+      <div class="settings-block" style="padding:0;border:none;">
+        <div class="row2">
+          <div><label class="label-mini" style="text-align:left">Satuan</label><input id="newUnit" placeholder="kg / pack / ikat" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;"></div>
+          <div><label class="label-mini" style="text-align:left">Target /2 hari</label><input id="newPar" type="number" min="0" step="any" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-close" id="cancelAdd">Batal</button>
+        <button class="btn-wa" style="background:var(--brand)" id="confirmAdd">Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('cancelAdd').onclick = ()=> root.innerHTML='';
+  document.getElementById('ovAdd').addEventListener('click', e=>{ if(e.target.id==='ovAdd') root.innerHTML=''; });
+  document.getElementById('confirmAdd').onclick = ()=>{
+    const name = document.getElementById('newName').value.trim();
+    const cat = document.getElementById('newCat').value;
+    const unit = document.getElementById('newUnit').value.trim() || 'pcs';
+    const par = parseFloat(document.getElementById('newPar').value)||0;
+    if(!name){ toast('Nama bahan wajib diisi'); return; }
+    state.items.push({id: crypto.randomUUID(), category:cat, name, unit, par, stock:0});
+    saveState(state);
+    root.innerHTML='';
+    renderBelanja();
+    toast('Bahan ditambahkan');
+  };
+}
+
+function openOrderModal(){
+  const text = buildOrderText();
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = `
+  <div class="modal-overlay" id="ovOrder">
+    <div class="modal">
+      <h3>📋 Daftar Belanja</h3>
+      <div class="order-list-text">${text.replace(/</g,'&lt;')}</div>
+      <div class="modal-actions">
+        <button class="btn-copy" id="copyBtn">Salin Teks</button>
+        <button class="btn-wa" id="waBtn">Kirim WhatsApp</button>
+      </div>
+      <button class="btn-confirm" id="confirmBtn">✔ Sudah Belanja / Tandai Selesai</button>
+      <button class="btn-close" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:none;border:1px solid var(--line);" id="closeOrder">Tutup</button>
+    </div>
+  </div>`;
+  document.getElementById('ovOrder').addEventListener('click', e=>{ if(e.target.id==='ovOrder') root.innerHTML=''; });
+  document.getElementById('closeOrder').onclick = ()=> root.innerHTML='';
+  document.getElementById('copyBtn').onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(text); toast('Teks disalin'); }
+    catch(e){ toast('Gagal menyalin, salin manual ya'); }
+  };
+  document.getElementById('waBtn').onclick = ()=>{
+    const phone = Object.values(state.suppliers).find(p=>p) || '';
+    const url = `https://wa.me/${phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+  document.getElementById('confirmBtn').onclick = ()=>{
+    const items = state.items.filter(i=>buyQty(i)>0).map(i=>({name:i.name, unit:i.unit, qty: buyQty(i)}));
+    state.history.unshift({date: todayStr(), items, totalQty: items.length});
+    state.items.forEach(i=>{ i.stock = i.par; });
+    state.lastOrderDate = todayStr();
+    saveState(state);
+    root.innerHTML = '';
+    renderAll();
+    toast('Siklus belanja diperbarui!');
+  };
+}
+
+function renderRiwayat(){
+  const root = document.getElementById('riwayatTab');
+  if(state.history.length===0){
+    root.innerHTML = `<div class="empty">Belum ada riwayat belanja.<br>Tandai "Sudah Belanja" setelah membuat daftar untuk mulai mencatat.</div>`;
+    return;
+  }
+  root.innerHTML = state.history.map((h,idx)=>`
+    <div class="hist-card">
+      <div class="d">${fmtDate(h.date)}</div>
+      <div class="meta">${h.items.length} bahan dibeli</div>
+      <button class="btn-secondary" data-toggle="${idx}" style="margin-top:0">Lihat detail</button>
+      <div class="hist-detail" id="hd${idx}">
+        ${h.items.map(i=>`• ${i.name}: ${fmtNum(i.qty)} ${i.unit}`).join('<br>')}
+      </div>
+    </div>
+  `).join('');
+  root.querySelectorAll('[data-toggle]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.getElementById('hd'+btn.dataset.toggle).classList.toggle('open');
+    });
+  });
+}
+
+function renderPengaturan(){
+  const root = document.getElementById('pengaturanTab');
+  root.innerHTML = `
+    <div class="settings-block">
+      <h3>Siklus Belanja</h3>
+      <label>Belanja setiap berapa hari?</label>
+      <input type="number" id="cycleDaysInput" min="1" value="${state.cycleDays}">
+    </div>
+    <div class="settings-block">
+      <h3>Nomor WhatsApp Supplier</h3>
+      <label>Nomor (contoh: 6281234567890)</label>
+      <input type="text" id="supplierPhone" value="${Object.values(state.suppliers)[0]||''}" placeholder="62812xxxxxxx">
+      <div style="font-size:.72rem;color:var(--sub);margin-top:4px;">Dipakai saat tombol "Kirim WhatsApp" ditekan.</div>
+    </div>
+    <div class="settings-block">
+      <h3>Cadangkan Data</h3>
+      <button class="btn-secondary" id="exportBtn">⬇ Unduh Backup (JSON)</button>
+      <label style="margin-top:10px;">Impor Backup</label>
+      <textarea id="importArea" rows="3" placeholder="Tempel isi file backup di sini..."></textarea>
+      <button class="btn-secondary" id="importBtn">⬆ Impor</button>
+    </div>
+    <div class="settings-block">
+      <h3>Reset</h3>
+      <button class="btn-danger-outline" id="resetStockBtn">Kosongkan semua input stok</button>
+      <button class="btn-danger-outline" id="resetAllBtn">Reset total ke bahan default</button>
+    </div>
+  `;
+  document.getElementById('cycleDaysInput').addEventListener('change', e=>{
+    state.cycleDays = parseInt(e.target.value)||2;
+    saveState(state); renderHeader();
+  });
+  document.getElementById('supplierPhone').addEventListener('change', e=>{
+    state.suppliers = { default: e.target.value.trim() };
+    saveState(state);
+    toast('Nomor supplier disimpan');
+  });
+  document.getElementById('exportBtn').onclick = ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `stok-ayam-gepuk-${todayStr()}.json`;
+    a.click();
+  };
+  document.getElementById('importBtn').onclick = ()=>{
+    try{
+      const parsed = JSON.parse(document.getElementById('importArea').value);
+      if(!parsed.items) throw new Error('format salah');
+      state = parsed;
+      saveState(state);
+      renderAll();
+      toast('Data berhasil diimpor');
+    }catch(e){ toast('Gagal impor: format tidak valid'); }
+  };
+  document.getElementById('resetStockBtn').onclick = ()=>{
+    if(confirm('Kosongkan semua input stok sekarang?')){
+      state.items.forEach(i=> i.stock = 0);
+      saveState(state); renderAll();
+    }
+  };
+  document.getElementById('resetAllBtn').onclick = ()=>{
+    if(confirm('Ini akan menghapus semua data dan kembali ke daftar bahan bawaan. Lanjutkan?')){
+      state = defaultState();
+      saveState(state); renderAll();
+    }
+  };
+}
+
+function renderAll(){
+  renderHeader();
+  renderBelanja();
+  renderRiwayat();
+  renderPengaturan();
+}
+
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    document.getElementById('belanjaTab').style.display = activeTab==='belanja' ? '' : 'none';
+    document.getElementById('riwayatTab').style.display = activeTab==='riwayat' ? '' : 'none';
+    document.getElementById('pengaturanTab').style.display = activeTab==='pengaturan' ? '' : 'none';
+    document.getElementById('stickyBottom').style.display = activeTab==='belanja' ? 'flex' : 'none';
+  });
+});
+
+document.getElementById('openOrderBtn').addEventListener('click', openOrderModal);
+
+renderAll();
+</script>
+</body>
+</html>
