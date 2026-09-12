@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<title>RF Maison Order Dapur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ink:#241f1a;
+    --ink-soft:#6a604f;
+    --paper:#ece3d0;
+    --card:#fbf8f1;
+    --card-alt:#f3ecdb;
+    --line:#ddd0ac;
+    --line-soft:#e6dcc3;
+    --green:#1e7a4c;
+    --green-dark:#145c38;
+    --green-tint:#e2ecdf;
+    --spice:#bb5119;
+    --spice-tint:#f2ddc4;
+    --danger:#a83226;
+    --shadow: 0 1px 0 rgba(36,31,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#f1e9d8;
+      --ink-soft:#bdaf95;
+      --paper:#181310;
+      --card:#241d17;
+      --card-alt:#2b231b;
+      --line:#3c3123;
+      --line-soft:#33291e;
+      --green:#48b47e;
+      --green-dark:#2e8c5e;
+      --green-tint:#1c2a20;
+      --spice:#e5813e;
+      --spice-tint:#3a2717;
+      --danger:#e2685f;
+      --shadow: 0 1px 0 rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#f1e9d8;
+    --ink-soft:#bdaf95;
+    --paper:#181310;
+    --card:#241d17;
+    --card-alt:#2b231b;
+    --line:#3c3123;
+    --line-soft:#33291e;
+    --green:#48b47e;
+    --green-dark:#2e8c5e;
+    --green-tint:#1c2a20;
+    --spice:#e5813e;
+    --spice-tint:#3a2717;
+    --danger:#e2685f;
+    --shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:920px;
+    margin:0 auto;
+    padding:20px 16px 96px;
+  }
+
+  .ticket-header{
+    text-align:center;
+    padding:22px 16px 20px;
+    background:
+      radial-gradient(circle at 8px 0, transparent 8px, var(--card) 8.5px) top left/16px 16px repeat-x,
+      var(--card);
+    border:1px solid var(--line);
+    border-top:none;
+    border-radius:0 0 10px 10px;
+    box-shadow:var(--shadow);
+  }
+  .ticket-header__mark{ font-size:28px; line-height:1; margin-bottom:6px; }
+  .brand{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(28px,6vw,38px);
+    margin:0;
+    letter-spacing:.01em;
+    text-wrap:balance;
+  }
+  .tagline{
+    margin:6px 0 0;
+    color:var(--ink-soft);
+    font-size:14px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+  }
+  .meta-row{
+    margin-top:14px;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+  }
+  .meta-chip{
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    font-size:12.5px;
+    background:var(--card-alt);
+    border:1px solid var(--line-soft);
+    border-radius:999px;
+    padding:5px 12px;
+    color:var(--ink-soft);
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 18px 20px;
+    margin-top:16px;
+    box-shadow:var(--shadow);
+  }
+  .panel-title{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:18px;
+    font-weight:600;
+    margin:0 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel-title:not(:first-child){ margin-top:18px; }
+  .count-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    background:var(--green);
+    color:#fff;
+    border-radius:999px;
+    min-width:22px;
+    height:22px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 7px;
+  }
+
+  .field-row{ display:flex; flex-direction:column; gap:6px; margin-bottom:4px; }
+  .field-row label{ font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .field-row input[type="text"], .field-row textarea{
+    font:inherit;
+    font-size:15px;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field-row textarea{ resize:vertical; min-height:44px; font-family:inherit; }
+  .field-row input:focus, .field-row textarea:focus{ outline:2px solid var(--green); outline-offset:1px; }
+
+  .summary-list{
+    border-top:1px dashed var(--line);
+    padding-top:10px;
+    margin-bottom:10px;
+  }
+  .empty-hint{ color:var(--ink-soft); font-size:14px; margin:6px 0; }
+  .summary-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:4px 0;
+    font-size:14.5px;
+  }
+  .summary-row .s-name{ flex:1; }
+  .summary-row .s-qty{
+    font-family:'IBM Plex Mono', monospace;
+    font-variant-numeric:tabular-nums;
+    color:var(--green-dark);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .summary-cat{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:10px 0 2px;
+  }
+  .summary-cat:first-child{ margin-top:0; }
+
+  .action-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .btn{
+    font:inherit;
+    font-weight:600;
+    font-size:14.5px;
+    border-radius:8px;
+    padding:11px 16px;
+    border:1px solid transparent;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    text-decoration:none;
+  }
+  .btn--primary{ background:var(--green); color:#fff; flex:1 1 220px; justify-content:center; }
+  .btn--primary:hover{ background:var(--green-dark); }
+  .btn--outline{ background:transparent; border-color:var(--line); color:var(--ink); }
+  .btn--ghost{ background:transparent; color:var(--danger); border-color:transparent; }
+  .btn--sm{ padding:9px 14px; font-size:14px; }
+  .form-error{ color:var(--danger); font-size:13.5px; margin:10px 0 0; }
+
+  .sticky-toolbar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--paper);
+    padding:14px 0 10px;
+    margin-top:6px;
+  }
+  #searchInput{
+    width:100%;
+    font:inherit;
+    font-size:15px;
+    padding:11px 14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--card);
+    color:var(--ink);
+  }
+  #searchInput:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .cat-nav{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-top:10px;
+  }
+  .cat-pill{
+    font-size:12.5px;
+    font-weight:600;
+    text-decoration:none;
+    color:var(--spice);
+    background:var(--spice-tint);
+    border-radius:999px;
+    padding:6px 12px;
+    border:1px solid transparent;
+  }
+
+  .catalog-section{ margin-top:8px; scroll-margin-top:96px; }
+  .catalog-section h2{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:19px;
+    font-weight:600;
+    margin:22px 0 8px;
+    padding-bottom:6px;
+    border-bottom:2px solid var(--line);
+  }
+  .item-list{ display:flex; flex-direction:column; }
+  .item-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:10px 4px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .item-row.is-selected{
+    background:var(--green-tint);
+    border-radius:8px;
+    padding-left:8px;
+    padding-right:8px;
+    border-bottom-color:transparent;
+  }
+  .item-info{ min-width:0; }
+  .item-name{ font-size:15px; font-weight:500; }
+  .item-note{ display:block; font-size:12px; color:var(--ink-soft); margin-top:1px; }
+  .stepper{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .step-btn{
+    width:30px; height:30px;
+    border-radius:7px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink);
+    font-size:17px;
+    line-height:1;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .step-btn:active{ transform:translateY(1px); }
+  .step-input{
+    width:52px;
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14.5px;
+    padding:6px 2px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .unit-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    width:44px;
+  }
+
+  .floatbar{
+    position:fixed;
+    left:16px; right:16px; bottom:16px;
+    max-width:888px;
+    margin:0 auto;
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:12px;
+    padding:12px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+    z-index:20;
+  }
+  .floatbar span{ font-size:14px; font-weight:600; font-family:'IBM Plex Mono', monospace; }
+  .floatbar .btn--primary{ flex:none; }
+
+  .toast{
+    position:fixed;
+    left:50%; bottom:90px;
+    transform:translateX(-50%) translateY(8px);
+    background:var(--ink);
+    color:var(--paper);
+    padding:9px 16px;
+    border-radius:999px;
+    font-size:13.5px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease, transform .2s ease;
+    z-index:30;
+  }
+  .toast.is-visible{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (min-width:700px){
+    .item-row{ padding:11px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="ticket-header">
+    <div class="ticket-header__mark">🧾</div>
+    <h1 class="brand">RF Maison</h1>
+    <p class="tagline">Borang Order Harian &middot; Barang Dapur</p>
+    <div class="meta-row">
+      <span class="meta-chip" id="todayDate">—</span>
+      <span class="meta-chip">Order ke WhatsApp +60 12-514 6185</span>
+    </div>
+  </header>
+
+  <section class="panel" id="orderPanel">
+    <h2 class="panel-title">Maklumat Kedai</h2>
+    <div class="field-row">
+      <label for="shopName">Nama Kedai / Order Untuk</label>
+      <input id="shopName" type="text" placeholder="cth: Kedai Makan Aminah" autocomplete="off">
+    </div>
+
+    <h2 class="panel-title">Ringkasan Order <span class="count-badge" id="summaryCount">0</span></h2>
+    <div class="summary-list" id="summaryList">
+      <p class="empty-hint">Belum ada barang dipilih. Pilih barang di senarai bawah.</p>
+    </div>
+
+    <div class="field-row">
+      <label for="notes">Catatan (pilihan)</label>
+      <textarea id="notes" rows="2" placeholder="cth: hantar sebelum jam 10 pagi"></textarea>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn--ghost" id="clearBtn" type="button">Padam Semua</button>
+      <button class="btn btn--outline" id="copyBtn" type="button">Salin Order</button>
+      <a class="btn btn--primary" id="sendBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Order &middot; WhatsApp</a>
+    </div>
+    <p class="form-error" id="formError" hidden></p>
+  </section>
+
+  <div class="sticky-toolbar">
+    <input id="searchInput" type="search" placeholder="Cari barang… cth: kicap, cili, straw">
+    <nav class="cat-nav" id="catNav" aria-label="Kategori barang"></nav>
+  </div>
+
+  <main id="catalog"></main>
+</div>
+
+<div class="floatbar" id="floatbar" hidden>
+  <span id="floatCount">0 barang dipilih</span>
+  <a class="btn btn--primary btn--sm" id="floatSendBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar</a>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var WA_NUMBER = "60125146185";
+
+  var CATALOG = [
+    { key:"protein", label:"Ayam, Daging & Seafood", items:[
+      { name:"Ayam 1/4 Dara", unit:"kg" },
+      { name:"Ayam 1/8 Bulat", unit:"kg" },
+      { name:"Udang Galah", unit:"kg" },
+      { name:"Sotong", unit:"kg" },
+      { name:"Chicken Tender", unit:"kg" },
+      { name:"Bakso", unit:"kg" },
+      { name:"Talapia", unit:"pcs" },
+      { name:"Keli", unit:"pcs" }
+    ]},
+    { key:"sayur", label:"Sayur, Herba & Bahan Segar", items:[
+      { name:"Enoki", unit:"pack" },
+      { name:"Bayam", unit:"kg" },
+      { name:"Tempe", unit:"pcs" },
+      { name:"Tauhu", unit:"pcs" },
+      { name:"Pedal", unit:"kg" },
+      { name:"Kubis", unit:"bundle", note:"1 bundle = 20kg" },
+      { name:"Timun Jepun", unit:"kg" },
+      { name:"Cili Merah", unit:"kg" },
+      { name:"Cili Hijau", unit:"kg" },
+      { name:"Lengkuas", unit:"kg" },
+      { name:"Serai", unit:"kg" },
+      { name:"Daun Salam", unit:"pack" },
+      { name:"Daun Limau Purut", unit:"pack" },
+      { name:"Bawang Merah", unit:"kg" },
+      { name:"Bawang Putih Kopek", unit:"kg" },
+      { name:"Habenero", unit:"kg" },
+      { name:"Soon", unit:"kg" },
+      { name:"Daun Bawang", unit:"kg" },
+      { name:"Daun Sup", unit:"kg" },
+      { name:"Lemon", unit:"kg" },
+      { name:"Limau Kasturi", unit:"kg" },
+      { name:"Santan", unit:"kg" },
+      { name:"Gula Merah", unit:"kg" }
+    ]},
+    { key:"kering", label:"Bahan Kering & Perencah", items:[
+      { name:"Kacang Tanah BK", unit:"kg" },
+      { name:"Kacang Gajus", unit:"tong" },
+      { name:"Beras", unit:"guni", note:"1 guni = 10kg" },
+      { name:"Tepung Bestari (HOT)", unit:"carton", note:"1 carton = 20 pack x 1kg" },
+      { name:"Tepung Bestari (ORI)", unit:"carton", note:"1 carton = 20 pack x 1kg" },
+      { name:"Kicap ABC", unit:"tong", note:"25kg" },
+      { name:"Indomee Asli", unit:"box", note:"1 box = 8 pack" },
+      { name:"Garam Halus Double Swallow", unit:"bungkus", note:"1 bungkus = 12 pack" },
+      { name:"Ajinamoto", unit:"box", note:"1 box = 1kg x 20" },
+      { name:"Serbuk Kunyit", unit:"kotak", note:"1 kotak = 40 pack" },
+      { name:"Minyak Bijan", unit:"botol", note:"630ml" },
+      { name:"Buah Keras", unit:"kg" },
+      { name:"Perencah Secukup Rasa", unit:"unit" },
+      { name:"Babas", unit:"unit" }
+    ]},
+    { key:"minuman", label:"Minuman & Sirap", items:[
+      { name:"Pink Guava w Lemon Juice", unit:"botol", note:"1kg" },
+      { name:"Pomelo Juice", unit:"botol", note:"950g" },
+      { name:"Passion Fruit Jasmine Tea", unit:"botol" },
+      { name:"Mango Juice", unit:"botol", note:"950g" },
+      { name:"Coconut Milk", unit:"botol", note:"1kg" },
+      { name:"Camellia Flavored Oolong Tea Base", unit:"botol", note:"1L" },
+      { name:"Lemon Mate Flavored Syrup", unit:"botol", note:"5.5kg" },
+      { name:"Fructose", unit:"botol", note:"1.6L" },
+      { name:"Cendol", unit:"pack" },
+      { name:"Santan (Minuman)", unit:"kg" },
+      { name:"Spritzer Air Mineral", unit:"carton", note:"550ml" },
+      { name:"Gula Perai", unit:"kg" },
+      { name:"Teh Botol", unit:"carton" }
+    ]},
+    { key:"pembungkusan", label:"Pembungkusan & Peralatan", items:[
+      { name:"Glove Cust L Transparent", unit:"box", note:"1 box = 100pcs" },
+      { name:"Glove Kitchen Black L", unit:"box", note:"10 box x 10 pack" },
+      { name:"Tissu Gulung Tandas", unit:"pack" },
+      { name:"Tissue (Pack)", unit:"box", note:"1 box = 12 pack" },
+      { name:"Thermal Paper Roll 80", unit:"roll" },
+      { name:"Receipt Paper 80x60 (Star10)", unit:"roll" },
+      { name:"Plastik Sampah GB32X40", unit:"guni", note:"1 guni = 30 pack" },
+      { name:"Plastik Sampah GB36X48 XL", unit:"ikat", note:"1 ikat = 10 pack" },
+      { name:"Round Keras Minyak 4.5-5.0", unit:"pack", note:"1x500" },
+      { name:"Star 38", unit:"pack", note:"1x80" },
+      { name:"Star 48", unit:"pack", note:"1x60" },
+      { name:"Plastik Nasi 500gm HM 12x12", unit:"pack" },
+      { name:"Kertas Minyak D 12x11.5", unit:"ikat", note:"1 ikat = 10 pack" },
+      { name:"Cup Sambal SC 50", unit:"box", note:"1 box = 10 pack" },
+      { name:"Cup Kicap SC 25", unit:"box", note:"1 box = 10 pack" },
+      { name:"Food Wrap 350x300mm", unit:"gulung" },
+      { name:"Kotak Bungkus", unit:"pack", note:"1 pack = 50pcs" },
+      { name:"Kotak Bungkus (Print)", unit:"pack", note:"1 pack = 50pcs" },
+      { name:"Straw", unit:"pack" },
+      { name:"Straw (Juice)", unit:"pack" },
+      { name:"Cup Air", unit:"box", note:"1 box = 20 packet x 100pcs" },
+      { name:"Toothpick", unit:"pack" },
+      { name:"Getah 60mm", unit:"pack" },
+      { name:"Gas", unit:"tong" }
+    ]},
+    { key:"pembersihan", label:"Pembersihan & Lain-lain", items:[
+      { name:"Dishwash", unit:"botol" },
+      { name:"Hand Soap", unit:"botol" },
+      { name:"Liquid Pine", unit:"botol" },
+      { name:"Bleach", unit:"botol" },
+      { name:"Laundry Powder", unit:"pack" },
+      { name:"Class Clean", unit:"botol" },
+      { name:"Floor Cleaner", unit:"botol" },
+      { name:"Multipurpose MP", unit:"botol" }
+    ]}
+  ];
+
+  function slugify(str){
+    return str.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+  }
+  CATALOG.forEach(function(cat){
+    cat.items.forEach(function(item){
+      item.id = cat.key + "--" + slugify(item.name);
+      item.step = item.unit === "kg" ? 0.5 : 1;
+    });
+  });
+
+  var STORAGE_KEY = "rfmaison_order_draft_v1";
+  var state = { shopName:"", notes:"", qty:{} };
+
+  function loadState(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      var saved = JSON.parse(raw);
+      if(saved && typeof saved === "object"){
+        state.shopName = saved.shopName || "";
+        state.notes = saved.notes || "";
+        state.qty = saved.qty || {};
+      }
+    }catch(e){ /* localStorage unavailable, continue with defaults */ }
+  }
+
+  function saveState(){
+    try{
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch(e){ /* private mode or storage full, ignore */ }
+  }
+
+  var MONTHS_MS = ["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
+  var WEEKDAYS_MS = { "Monday":"Isnin","Tuesday":"Selasa","Wednesday":"Rabu","Thursday":"Khamis","Friday":"Jumaat","Saturday":"Sabtu","Sunday":"Ahad" };
+
+  function todayParts(){
+    var fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", year:"numeric", weekday:"long"
+    });
+    var parts = fmt.formatToParts(new Date());
+    var out = {};
+    parts.forEach(function(p){ out[p.type] = p.value; });
+    return out;
+  }
+
+  function renderToday(){
+    var p = todayParts();
+    var monthName = MONTHS_MS[parseInt(p.month,10)-1];
+    var weekdayName = WEEKDAYS_MS[p.weekday] || p.weekday;
+    document.getElementById("todayDate").textContent = weekdayName + ", " + parseInt(p.day,10) + " " + monthName + " " + p.year;
+    return weekdayName + ", " + parseInt(p.day,10) + " " + monthName + " " + p.year;
+  }
+
+  function formatQty(n){
+    return (Math.round(n*10)/10).toString();
+  }
+
+  function findItem(id){
+    for(var c=0;c<CATALOG.length;c++){
+      for(var i=0;i<CATALOG[c].items.length;i++){
+        if(CATALOG[c].items[i].id === id) return CATALOG[c].items[i];
+      }
+    }
+    return null;
+  }
+
+  function renderCatalog(){
+    var nav = document.getElementById("catNav");
+    var catalog = document.getElementById("catalog");
+    var navHtml = "";
+    var catalogHtml = "";
+
+    CATALOG.forEach(function(cat){
+      navHtml += '<a class="cat-pill" href="#cat-' + cat.key + '">' + cat.label + '</a>';
+
+      var rows = "";
+      cat.items.forEach(function(item){
+        var qty = state.qty[item.id] || 0;
+        rows += ''
+          + '<div class="item-row' + (qty > 0 ? ' is-selected' : '') + '" data-id="' + item.id + '" data-search="' + item.name.toLowerCase() + '">'
+          +   '<div class="item-info">'
+          +     '<span class="item-name">' + item.name + '</span>'
+          +     (item.note ? '<span class="item-note">' + item.note + '</span>' : '')
+          +   '</div>'
+          +   '<div class="stepper">'
+          +     '<button class="step-btn" type="button" data-action="dec" aria-label="Kurangkan ' + item.name + '">−</button>'
+          +     '<input class="step-input" type="number" inputmode="decimal" min="0" step="' + item.step + '" value="' + (qty > 0 ? formatQty(qty) : "") + '" placeholder="0" aria-label="Kuantiti ' + item.name + '">'
+          +     '<span class="unit-label">' + item.unit + '</span>'
+          +     '<button class="step-btn" type="button" data-action="inc" aria-label="Tambah ' + item.name + '">+</button>'
+          +   '</div>'
+          + '</div>';
+      });
+
+      catalogHtml += ''
+        + '<section class="catalog-section" id="cat-' + cat.key + '" data-cat="' + cat.key + '">'
+        +   '<h2>' + cat.label + '</h2>'
+        +   '<div class="item-list">' + rows + '</div>'
+        + '</section>';
+    });
+
+    nav.innerHTML = navHtml;
+    catalog.innerHTML = catalogHtml;
+  }
+
+  function setQty(id, newQty){
+    var item = findItem(id);
+    if(!item) return;
+    if(newQty < 0 || isNaN(newQty)) newQty = 0;
+    newQty = Math.round(newQty * 10) / 10;
+    if(newQty > 0){ state.qty[id] = newQty; } else { delete state.qty[id]; }
+
+    var row = document.querySelector('.item-row[data-id="' + id + '"]');
+    if(row){
+      row.classList.toggle("is-selected", newQty > 0);
+      row.querySelector(".step-input").value = newQty > 0 ? formatQty(newQty) : "";
+    }
+    saveState();
+    renderSummary();
+  }
+
+  function renderSummary(){
+    var list = document.getElementById("summaryList");
+    var countBadge = document.getElementById("summaryCount");
+    var floatbar = document.getElementById("floatbar");
+    var floatCount = document.getElementById("floatCount");
+
+    var ids = Object.keys(state.qty);
+    countBadge.textContent = ids.length;
+
+    if(ids.length === 0){
+      list.innerHTML = '<p class="empty-hint">Belum ada barang dipilih. Pilih barang di senarai bawah.</p>';
+      floatbar.hidden = true;
+      return;
+    }
+
+    var html = "";
+    CATALOG.forEach(function(cat){
+      var catRows = "";
+      cat.items.forEach(function(item){
+        var qty = state.qty[item.id];
+        if(!qty) return;
+        catRows += ''
+          + '<div class="summary-row">'
+          +   '<span class="s-name">' + item.name + '</span>'
+          +   '<span class="s-qty">' + formatQty(qty) + ' ' + item.unit + '</span>'
+          + '</div>';
+      });
+      if(catRows){
+        html += '<div class="summary-cat">' + cat.label + '</div>' + catRows;
+      }
+    });
+    list.innerHTML = html;
+
+    floatbar.hidden = false;
+    floatCount.textContent = ids.length + (ids.length === 1 ? " barang dipilih" : " barang dipilih");
+  }
+
+  function buildMessage(){
+    var dateStr = renderToday();
+    var lines = [];
+    lines.push("*ORDER BARANG DAPUR - RF MAISON*");
+    lines.push("Kedai: " + (state.shopName.trim() || "-"));
+    lines.push("Tarikh: " + dateStr);
+    lines.push("");
+
+    CATALOG.forEach(function(cat){
+      var catLines = [];
+      cat.items.forEach(function(item){
+        var qty = state.qty[item.id];
+        if(!qty) return;
+        catLines.push("- " + item.name + " x " + formatQty(qty) + " " + item.unit);
+      });
+      if(catLines.length){
+        lines.push("*" + cat.label + "*");
+        lines = lines.concat(catLines);
+        lines.push("");
+      }
+    });
+
+    if(state.notes.trim()){
+      lines.push("Catatan: " + state.notes.trim());
+      lines.push("");
+    }
+
+    lines.push("Jumlah jenis barang: " + Object.keys(state.qty).length);
+    return lines.join("\n");
+  }
+
+  function showError(msg){
+    var el = document.getElementById("formError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function clearError(){
+    document.getElementById("formError").hidden = true;
+  }
+
+  function validate(){
+    clearError();
+    if(!state.shopName.trim()){
+      showError("Sila isi nama kedai dahulu.");
+      document.getElementById("shopName").focus();
+      document.getElementById("orderPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+      return false;
+    }
+    if(Object.keys(state.qty).length === 0){
+      showError("Sila pilih sekurang-kurangnya satu barang.");
+      return false;
+    }
+    return true;
+  }
+
+  function handleSendClick(e){
+    if(!validate()){
+      e.preventDefault();
+      return;
+    }
+    var message = buildMessage();
+    var url = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(message);
+    e.currentTarget.setAttribute("href", url);
+  }
+
+  function showToast(msg){
+    var toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.classList.add("is-visible");
+    window.setTimeout(function(){ toast.classList.remove("is-visible"); }, 1800);
+  }
+
+  function copyOrder(){
+    if(Object.keys(state.qty).length === 0){
+      showError("Sila pilih sekurang-kurangnya satu barang sebelum menyalin.");
+      return;
+    }
+    clearError();
+    var message = buildMessage();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(message).then(function(){
+        showToast("Order disalin!");
+      }).catch(function(){
+        showToast("Gagal salin. Cuba lagi.");
+      });
+    }else{
+      showToast("Salin tidak disokong pada pelayar ini.");
+    }
+  }
+
+  function clearAll(){
+    state.qty = {};
+    state.notes = "";
+    document.getElementById("notes").value = "";
+    document.querySelectorAll(".item-row").forEach(function(row){
+      row.classList.remove("is-selected");
+      row.querySelector(".step-input").value = "";
+    });
+    clearError();
+    saveState();
+    renderSummary();
+  }
+
+  function applySearch(query){
+    query = query.trim().toLowerCase();
+    var sections = document.querySelectorAll(".catalog-section");
+    sections.forEach(function(section){
+      var rows = section.querySelectorAll(".item-row");
+      var visibleCount = 0;
+      rows.forEach(function(row){
+        var match = !query || row.getAttribute("data-search").indexOf(query) !== -1;
+        row.style.display = match ? "" : "none";
+        if(match) visibleCount++;
+      });
+      section.style.display = visibleCount > 0 ? "" : "none";
+    });
+  }
+
+  function bindEvents(){
+    var catalog = document.getElementById("catalog");
+
+    catalog.addEventListener("click", function(e){
+      var btn = e.target.closest(".step-btn");
+      if(!btn) return;
+      var row = btn.closest(".item-row");
+      var id = row.getAttribute("data-id");
+      var item = findItem(id);
+      var current = state.qty[id] || 0;
+      var delta = btn.getAttribute("data-action") === "inc" ? item.step : -item.step;
+      setQty(id, current + delta);
+    });
+
+    catalog.addEventListener("change", function(e){
+      if(!e.target.classList.contains("step-input")) return;
+      var row = e.target.closest(".item-row");
+      var id = row.getAttribute("data-id");
+      setQty(id, parseFloat(e.target.value) || 0);
+    });
+
+    document.getElementById("shopName").addEventListener("input", function(e){
+      state.shopName = e.target.value;
+      saveState();
+    });
+    document.getElementById("notes").addEventListener("input", function(e){
+      state.notes = e.target.value;
+      saveState();
+    });
+
+    document.getElementById("sendBtn").addEventListener("click", handleSendClick);
+    document.getElementById("floatSendBtn").addEventListener("click", handleSendClick);
+    document.getElementById("copyBtn").addEventListener("click", copyOrder);
+    document.getElementById("clearBtn").addEventListener("click", clearAll);
+
+    document.getElementById("searchInput").addEventListener("input", function(e){
+      applySearch(e.target.value);
+    });
+  }
+
+  function init(){
+    loadState();
+    renderToday();
+    renderCatalog();
+    document.getElementById("shopName").value = state.shopName;
+    document.getElementById("notes").value = state.notes;
+    renderSummary();
+    bindEvents();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+})();
+</script>
+</body>
+</html>

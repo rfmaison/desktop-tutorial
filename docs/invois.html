@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<title>RF Maison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --ink:#241f1a;
+    --ink-soft:#6a604f;
+    --paper:#ece3d0;
+    --card:#fbf8f1;
+    --card-alt:#f3ecdb;
+    --line:#ddd0ac;
+    --line-soft:#e6dcc3;
+    --green:#1e7a4c;
+    --green-dark:#145c38;
+    --green-tint:#e2ecdf;
+    --spice:#bb5119;
+    --spice-tint:#f2ddc4;
+    --danger:#a83226;
+    --shadow: 0 1px 0 rgba(36,31,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+      --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+      --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+    --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+    --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{ max-width:720px; margin:0 auto; padding:20px 16px 60px; }
+
+  .ticket-header{
+    text-align:center;
+    padding:22px 16px 20px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:var(--shadow);
+  }
+  .ticket-header__mark{ font-size:28px; line-height:1; margin-bottom:6px; }
+  .brand{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;
+    font-size:clamp(26px,6vw,34px);
+    margin:0;
+    text-wrap:balance;
+  }
+  .tagline{ margin:6px 0 0; color:var(--ink-soft); font-size:14px; letter-spacing:.03em; text-transform:uppercase; }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 18px 20px;
+    margin-top:16px;
+    box-shadow:var(--shadow);
+  }
+  .panel-title{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:18px;
+    font-weight:600;
+    margin:0 0 12px;
+  }
+  .panel-title:not(:first-child){ margin-top:20px; }
+
+  .field-row{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .field-row label{ font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .field-row input[type="text"], .field-row input[type="tel"]{
+    font:inherit; font-size:15px; padding:10px 12px;
+    border:1px solid var(--line); border-radius:8px;
+    background:var(--paper); color:var(--ink);
+  }
+  .field-row input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .hint{ font-size:12px; color:var(--ink-soft); }
+  #printHint{ text-align:center; margin:-4px 0 0; }
+
+  .item-row{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; padding:12px 8px;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .item-row:last-child{ border-bottom:none; }
+  .item-row.is-selected{ background:var(--green-tint); border-radius:8px; border-bottom-color:transparent; }
+  .item-info{ min-width:0; }
+  .item-name{ font-size:15.5px; font-weight:600; display:block; }
+  .item-price{ font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .stepper{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .step-btn{
+    width:32px; height:32px; border-radius:7px;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    font-size:18px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .step-btn:active{ transform:translateY(1px); }
+  .step-input{
+    width:52px; text-align:center;
+    font-family:'IBM Plex Mono', monospace; font-size:15px;
+    padding:7px 2px; border:1px solid var(--line); border-radius:7px;
+    background:var(--paper); color:var(--ink);
+  }
+  .unit-label{ font-size:12px; color:var(--ink-soft); width:46px; }
+
+  .totals-box{ border-top:1px dashed var(--line); margin-top:6px; padding-top:12px; }
+  .totals-row{ display:flex; justify-content:space-between; font-size:14.5px; padding:3px 0; }
+  .totals-row.grand{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:21px; font-weight:600;
+    border-top:2px solid var(--line); margin-top:8px; padding-top:10px;
+  }
+  .totals-row .t-amount{ font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; }
+
+  .btn{
+    font:inherit; font-weight:600; font-size:14.5px;
+    border-radius:8px; padding:12px 16px; border:1px solid transparent;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    text-decoration:none; width:100%;
+  }
+  .btn--primary{ background:var(--green); color:#fff; }
+  .btn--primary:hover{ background:var(--green-dark); }
+  .btn--outline{ background:transparent; border-color:var(--line); color:var(--ink); }
+  .action-stack{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .form-error{ color:var(--danger); font-size:13.5px; margin:10px 0 0; }
+
+  .invoice-doc{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:24px;
+    margin-top:16px;
+  }
+  .invoice-top{ display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:14px; }
+  .invoice-co{ font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:600; }
+  .invoice-co small{ display:block; font-family:'IBM Plex Sans',sans-serif; font-size:12px; color:var(--ink-soft); font-weight:400; margin-top:2px; }
+  .invoice-meta{ text-align:right; font-size:13px; color:var(--ink-soft); }
+  .invoice-meta strong{ color:var(--ink); font-family:'IBM Plex Mono', monospace; display:block; font-size:14.5px; }
+  .bill-to{ margin-top:14px; font-size:14px; }
+  .bill-to .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+  table.invoice-table{ width:100%; border-collapse:collapse; margin-top:16px; font-size:14.5px; }
+  table.invoice-table th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); border-bottom:1px solid var(--line); padding:6px 4px; }
+  table.invoice-table td{ padding:8px 4px; border-bottom:1px solid var(--line-soft); font-variant-numeric:tabular-nums; }
+  table.invoice-table td.num, table.invoice-table th.num{ text-align:right; font-family:'IBM Plex Mono', monospace; }
+  .invoice-grand{ display:flex; justify-content:space-between; align-items:baseline; margin-top:12px; padding-top:12px; border-top:2px solid var(--ink); }
+  .invoice-grand .label{ font-family:'Fraunces', Georgia, serif; font-size:17px; font-weight:600; }
+  .invoice-grand .amount{ font-family:'IBM Plex Mono', monospace; font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; }
+
+  .payment-box{
+    margin-top:20px; background:var(--card-alt); border:1px dashed var(--line);
+    border-radius:8px; padding:14px 16px;
+  }
+  .payment-box .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:6px; }
+  .payment-row{ display:flex; justify-content:space-between; font-size:14.5px; padding:2px 0; }
+  .payment-row strong{ font-family:'IBM Plex Mono', monospace; }
+  .payment-note{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; }
+
+  .no-print{ }
+  @media print{
+    body{ background:#fff; }
+    .ticket-header, .panel, .action-stack{ display:none !important; }
+    .page{ padding:0; max-width:none; }
+    .invoice-doc{ border:none; box-shadow:none; margin:0; }
+    .no-print{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="ticket-header">
+    <div class="ticket-header__mark">🧾</div>
+    <h1 class="brand">RF Maison</h1>
+    <p class="tagline">Order &amp; Invoice</p>
+  </header>
+
+  <section class="panel" id="orderPanel">
+    <h2 class="panel-title">Maklumat Restoran</h2>
+    <div class="field-row">
+      <label for="custName">Nama Restoran</label>
+      <input id="custName" type="text" placeholder="cth: Restoran Aminah" autocomplete="off">
+    </div>
+    <div class="field-row">
+      <label for="custPhone">No. WhatsApp Restoran (pilihan)</label>
+      <input id="custPhone" type="tel" placeholder="cth: 0123456789" autocomplete="off">
+    </div>
+
+    <h2 class="panel-title">Pilih Barang</h2>
+    <div id="itemList"></div>
+
+    <div class="totals-box" id="totalsBox"></div>
+
+    <p class="form-error" id="formError" hidden></p>
+    <div class="action-stack">
+      <button class="btn btn--primary" id="genInvoiceBtn" type="button">Jana Invois</button>
+    </div>
+  </section>
+
+  <section class="invoice-doc" id="invoiceDoc" hidden>
+    <div class="invoice-top">
+      <div class="invoice-co">
+        RF MAISON SDN BHD
+        <small>Invois Jualan</small>
+      </div>
+      <div class="invoice-meta">
+        No. Invois <strong id="invNumber">—</strong>
+        Tarikh <strong id="invDate">—</strong>
+      </div>
+    </div>
+
+    <div class="bill-to">
+      <div class="label">Ditagih Kepada</div>
+      <div id="invBillTo">—</div>
+    </div>
+
+    <table class="invoice-table">
+      <thead>
+        <tr><th>Barang</th><th class="num">Kuantiti</th><th class="num">Harga Seunit</th><th class="num">Jumlah</th></tr>
+      </thead>
+      <tbody id="invItemsBody"></tbody>
+    </table>
+
+    <div class="invoice-grand">
+      <span class="label">Jumlah Perlu Dibayar</span>
+      <span class="amount" id="invGrandTotal">RM 0.00</span>
+    </div>
+
+    <div class="payment-box">
+      <div class="label">Maklumat Pembayaran</div>
+      <div class="payment-row"><span>Nama Akaun</span><strong>RF MAISON SDN BHD</strong></div>
+      <div class="payment-row"><span>Bank</span><strong>Maybank</strong></div>
+      <div class="payment-row"><span>No. Akaun</span><strong>562209740571</strong></div>
+      <p class="payment-note">Sila buat pembayaran &amp; hantar resit/bukti bayaran ke WhatsApp penjual bersama nombor invois di atas.</p>
+    </div>
+
+    <div class="action-stack no-print">
+      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Cetak Invois (Simpan sebagai PDF)</button>
+      <p class="hint" id="printHint">Bila dialog cetak keluar, pilih "Save as PDF" sebagai destinasi/printer.</p>
+      <a class="btn btn--primary" id="sendSellerBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Order kepada RF Maison</a>
+      <button class="btn btn--outline" id="editBtn" type="button">Kembali Edit Order</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SELLER_WA_NUMBER = "60125146185";
+
+  var ITEMS = [
+    { id:"kicap", name:"Kicap", unit:"botol", price:190 },
+    { id:"gajus", name:"Kacang Gajus", unit:"tong", price:595 },
+    { id:"tanah", name:"Kacang Tanah", unit:"pack", price:120 },
+    { id:"takeaway", name:"Takeaway Box", unit:"pcs", price:0.65 }
+  ];
+
+  var STORAGE_KEY = "rfmaison_invoice_draft_v1";
+  var state = { custName:"", custPhone:"", qty:{} };
+
+  function loadState(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      var saved = JSON.parse(raw);
+      if(saved && typeof saved === "object"){
+        state.custName = saved.custName || "";
+        state.custPhone = saved.custPhone || "";
+        state.qty = saved.qty || {};
+      }
+    }catch(e){ /* storage unavailable, keep defaults */ }
+  }
+  function saveState(){
+    try{ window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* ignore */ }
+  }
+
+  function money(n){
+    return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+
+  function findItem(id){
+    for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].id === id) return ITEMS[i]; }
+    return null;
+  }
+
+  function renderItems(){
+    var html = "";
+    ITEMS.forEach(function(item){
+      var qty = state.qty[item.id] || 0;
+      html += ''
+        + '<div class="item-row' + (qty > 0 ? ' is-selected' : '') + '" data-id="' + item.id + '">'
+        +   '<div class="item-info">'
+        +     '<span class="item-name">' + item.name + '</span>'
+        +     '<span class="item-price">' + money(item.price) + ' / ' + item.unit + '</span>'
+        +   '</div>'
+        +   '<div class="stepper">'
+        +     '<button class="step-btn" type="button" data-action="dec" aria-label="Kurangkan ' + item.name + '">−</button>'
+        +     '<input class="step-input" type="number" inputmode="numeric" min="0" step="1" value="' + (qty > 0 ? qty : "") + '" placeholder="0" aria-label="Kuantiti ' + item.name + '">'
+        +     '<span class="unit-label">' + item.unit + '</span>'
+        +     '<button class="step-btn" type="button" data-action="inc" aria-label="Tambah ' + item.name + '">+</button>'
+        +   '</div>'
+        + '</div>';
+    });
+    document.getElementById("itemList").innerHTML = html;
+  }
+
+  function getLines(){
+    var lines = [];
+    ITEMS.forEach(function(item){
+      var qty = state.qty[item.id] || 0;
+      if(qty > 0){
+        lines.push({ item:item, qty:qty, subtotal: qty * item.price });
+      }
+    });
+    return lines;
+  }
+
+  function renderTotals(){
+    var lines = getLines();
+    var box = document.getElementById("totalsBox");
+    if(lines.length === 0){
+      box.innerHTML = '<p class="hint">Belum ada barang dipilih.</p>';
+      return;
+    }
+    var html = "";
+    var grand = 0;
+    lines.forEach(function(l){
+      grand += l.subtotal;
+      html += '<div class="totals-row"><span>' + l.item.name + ' &times; ' + l.qty + ' ' + l.item.unit + '</span><span class="t-amount">' + money(l.subtotal) + '</span></div>';
+    });
+    html += '<div class="totals-row grand"><span>Jumlah</span><span class="t-amount">' + money(grand) + '</span></div>';
+    box.innerHTML = html;
+  }
+
+  function setQty(id, newQty){
+    if(newQty < 0 || isNaN(newQty)) newQty = 0;
+    newQty = Math.round(newQty);
+    if(newQty > 0){ state.qty[id] = newQty; } else { delete state.qty[id]; }
+
+    var row = document.querySelector('.item-row[data-id="' + id + '"]');
+    if(row){
+      row.classList.toggle("is-selected", newQty > 0);
+      row.querySelector(".step-input").value = newQty > 0 ? newQty : "";
+    }
+    saveState();
+    renderTotals();
+  }
+
+  function showError(msg){
+    var el = document.getElementById("formError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function clearError(){ document.getElementById("formError").hidden = true; }
+
+  function validate(){
+    clearError();
+    if(!state.custName.trim()){
+      showError("Sila isi nama restoran dahulu.");
+      document.getElementById("custName").focus();
+      return false;
+    }
+    if(getLines().length === 0){
+      showError("Sila pilih sekurang-kurangnya satu barang.");
+      return false;
+    }
+    return true;
+  }
+
+  function todayKL(){
+    var fmt = new Intl.DateTimeFormat("en-GB", { timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", year:"numeric" });
+    return fmt.format(new Date());
+  }
+
+  function invoiceStamp(){
+    return String(Math.floor(10000 + Math.random() * 90000));
+  }
+
+  var currentInvoiceNumber = null;
+
+  function generateInvoice(){
+    if(!validate()) return;
+
+    currentInvoiceNumber = "RFM-" + invoiceStamp();
+    document.getElementById("invNumber").textContent = currentInvoiceNumber;
+    document.getElementById("invDate").textContent = todayKL();
+
+    var billTo = state.custName.trim();
+    if(state.custPhone.trim()) billTo += " (" + state.custPhone.trim() + ")";
+    document.getElementById("invBillTo").textContent = billTo;
+
+    var lines = getLines();
+    var rows = "";
+    var grand = 0;
+    lines.forEach(function(l){
+      grand += l.subtotal;
+      rows += ''
+        + '<tr>'
+        +   '<td>' + l.item.name + '</td>'
+        +   '<td class="num">' + l.qty + ' ' + l.item.unit + '</td>'
+        +   '<td class="num">' + money(l.item.price) + '</td>'
+        +   '<td class="num">' + money(l.subtotal) + '</td>'
+        + '</tr>';
+    });
+    document.getElementById("invItemsBody").innerHTML = rows;
+    document.getElementById("invGrandTotal").textContent = money(grand);
+
+    document.getElementById("orderPanel").hidden = true;
+    var doc = document.getElementById("invoiceDoc");
+    doc.hidden = false;
+    doc.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function buildSellerMessage(){
+    var lines = getLines();
+    var msg = [];
+    msg.push("*ORDER BARU - RF MAISON*");
+    msg.push("No. Invois: " + currentInvoiceNumber);
+    msg.push("Restoran: " + state.custName.trim() + (state.custPhone.trim() ? " (" + state.custPhone.trim() + ")" : ""));
+    msg.push("Tarikh: " + todayKL());
+    msg.push("");
+    var grand = 0;
+    lines.forEach(function(l){
+      grand += l.subtotal;
+      msg.push("- " + l.item.name + " x " + l.qty + " " + l.item.unit + " = " + money(l.subtotal));
+    });
+    msg.push("");
+    msg.push("Jumlah: " + money(grand));
+    return msg.join("\n");
+  }
+
+  function printInvoice(){
+    if(!currentInvoiceNumber) return;
+    window.print();
+  }
+
+  function handleSendSellerClick(e){
+    if(!currentInvoiceNumber){ e.preventDefault(); return; }
+    var url = "https://wa.me/" + SELLER_WA_NUMBER + "?text=" + encodeURIComponent(buildSellerMessage());
+    e.currentTarget.setAttribute("href", url);
+  }
+
+  function backToEdit(){
+    document.getElementById("invoiceDoc").hidden = true;
+    document.getElementById("orderPanel").hidden = false;
+    document.getElementById("orderPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function bindEvents(){
+    document.getElementById("itemList").addEventListener("click", function(e){
+      var btn = e.target.closest(".step-btn");
+      if(!btn) return;
+      var row = btn.closest(".item-row");
+      var id = row.getAttribute("data-id");
+      var current = state.qty[id] || 0;
+      setQty(id, current + (btn.getAttribute("data-action") === "inc" ? 1 : -1));
+    });
+    document.getElementById("itemList").addEventListener("change", function(e){
+      if(!e.target.classList.contains("step-input")) return;
+      var row = e.target.closest(".item-row");
+      setQty(row.getAttribute("data-id"), parseInt(e.target.value, 10) || 0);
+    });
+
+    document.getElementById("custName").addEventListener("input", function(e){ state.custName = e.target.value; saveState(); });
+    document.getElementById("custPhone").addEventListener("input", function(e){ state.custPhone = e.target.value; saveState(); });
+
+    document.getElementById("genInvoiceBtn").addEventListener("click", generateInvoice);
+    document.getElementById("downloadPdfBtn").addEventListener("click", printInvoice);
+    document.getElementById("sendSellerBtn").addEventListener("click", handleSendSellerClick);
+    document.getElementById("editBtn").addEventListener("click", backToEdit);
+  }
+
+  function init(){
+    loadState();
+    renderItems();
+    document.getElementById("custName").value = state.custName;
+    document.getElementById("custPhone").value = state.custPhone;
+    renderTotals();
+    bindEvents();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+})();
+</script>
+</body>
+</html>
