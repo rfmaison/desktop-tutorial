@@ -5,6 +5,7 @@
 <title>RF Maison</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
     --ink:#241f1a;
@@ -247,9 +248,9 @@
       <p class="payment-note">Sila buat pembayaran &amp; hantar resit/bukti bayaran ke WhatsApp penjual bersama nombor invois di atas.</p>
     </div>
 
+    <p class="form-error" id="pdfError" hidden></p>
     <div class="action-stack no-print">
-      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Cetak Invois (Simpan sebagai PDF)</button>
-      <p class="hint" id="printHint">Bila dialog cetak keluar, pilih "Save as PDF" sebagai destinasi/printer.</p>
+      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Muat Turun Invois (PDF)</button>
       <a class="btn btn--primary" id="sendSellerBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Order kepada RF Maison</a>
       <button class="btn btn--outline" id="editBtn" type="button">Kembali Edit Order</button>
     </div>
@@ -420,6 +421,7 @@
     document.getElementById("invItemsBody").innerHTML = rows;
     document.getElementById("invGrandTotal").textContent = money(grand);
 
+    document.getElementById("pdfError").hidden = true;
     document.getElementById("orderPanel").hidden = true;
     var doc = document.getElementById("invoiceDoc");
     doc.hidden = false;
@@ -444,9 +446,127 @@
     return msg.join("\n");
   }
 
-  function printInvoice(){
+  function showPdfError(msg){
+    var el = document.getElementById("pdfError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function downloadInvoicePdf(){
+    var pdfErrorEl = document.getElementById("pdfError");
+    pdfErrorEl.hidden = true;
+
     if(!currentInvoiceNumber) return;
-    window.print();
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showPdfError("PDF belum sedia (perlukan sambungan internet untuk muat library). Sila cuba lagi sebentar, atau guna Cetak/Ctrl+P dan pilih \"Save as PDF\".");
+      return;
+    }
+
+    try{
+      buildAndSavePdf();
+    }catch(err){
+      showPdfError("Gagal jana PDF. Sila guna Cetak/Ctrl+P dan pilih \"Save as PDF\" sebagai alternatif.");
+    }
+  }
+
+  function buildAndSavePdf(){
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit:"mm", format:"a4" });
+    var margin = 20;
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var colQty = margin + 78;
+    var colHarga = margin + 112;
+    var colJumlah = pageWidth - margin;
+    var y = margin;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text("RF MAISON SDN BHD", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Invois Jualan", margin, y + 6);
+
+    doc.setFontSize(10);
+    doc.text("No. Invois: " + currentInvoiceNumber, colJumlah, y, { align:"right" });
+    doc.text("Tarikh: " + todayKL(), colJumlah, y + 6, { align:"right" });
+
+    y += 14;
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("DITAGIH KEPADA", margin, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    var billTo = state.custName.trim() + (state.custPhone.trim() ? " (" + state.custPhone.trim() + ")" : "");
+    doc.text(billTo, margin, y);
+    y += 12;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("BARANG", margin, y);
+    doc.text("KUANTITI", colQty, y);
+    doc.text("HARGA SEUNIT", colHarga, y);
+    doc.text("JUMLAH", colJumlah, y, { align:"right" });
+    y += 2;
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    var lines = getLines();
+    var grand = 0;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    lines.forEach(function(l){
+      grand += l.subtotal;
+      doc.text(l.item.name, margin, y);
+      doc.text(String(l.qty) + " " + l.item.unit, colQty, y);
+      doc.text(money(l.item.price), colHarga, y);
+      doc.text(money(l.subtotal), colJumlah, y, { align:"right" });
+      y += 7;
+    });
+
+    y += 2;
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 9;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("JUMLAH PERLU DIBAYAR", margin, y);
+    doc.text(money(grand), colJumlah, y, { align:"right" });
+
+    y += 10;
+    var boxHeight = 34;
+    doc.setDrawColor(190);
+    doc.setFillColor(243, 236, 219);
+    doc.rect(margin, y, pageWidth - margin * 2, boxHeight, "FD");
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("MAKLUMAT PEMBAYARAN", margin + 5, y);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Nama Akaun: RF MAISON SDN BHD", margin + 5, y);
+    y += 6;
+    doc.text("Bank: Maybank", margin + 5, y);
+    y += 6;
+    doc.text("No. Akaun: 562209740571", margin + 5, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(110);
+    var noteLines = doc.splitTextToSize(
+      "Sila buat pembayaran & hantar resit bukti bayaran ke WhatsApp penjual bersama nombor invois di atas.",
+      pageWidth - margin * 2 - 10
+    );
+    doc.text(noteLines, margin + 5, y);
+
+    doc.save("Invois-" + currentInvoiceNumber + ".pdf");
   }
 
   function handleSendSellerClick(e){
@@ -480,7 +600,7 @@
     document.getElementById("custPhone").addEventListener("input", function(e){ state.custPhone = e.target.value; saveState(); });
 
     document.getElementById("genInvoiceBtn").addEventListener("click", generateInvoice);
-    document.getElementById("downloadPdfBtn").addEventListener("click", printInvoice);
+    document.getElementById("downloadPdfBtn").addEventListener("click", downloadInvoicePdf);
     document.getElementById("sendSellerBtn").addEventListener("click", handleSendSellerClick);
     document.getElementById("editBtn").addEventListener("click", backToEdit);
   }
