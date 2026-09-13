@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#241f1a; --ink-soft:#6a604f; --paper:#ece3d0; --card:#fbf8f1; --card-alt:#f3ecdb;
+    --line:#ddd0ac; --line-soft:#e6dcc3; --green:#1e7a4c; --green-dark:#145c38; --green-tint:#e2ecdf;
+    --spice:#bb5119; --spice-tint:#f2ddc4; --danger:#a83226; --shadow: 0 1px 0 rgba(36,31,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+      --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+      --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+    --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+    --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .page{ max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+
+  .ticket-header{ text-align:center; padding:22px 16px 20px; background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); }
+  .ticket-header__mark{ font-size:28px; line-height:1; margin-bottom:6px; }
+  .brand{ font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:clamp(26px,6vw,34px); margin:0; text-wrap:balance; }
+  .tagline{ margin:6px 0 0; color:var(--ink-soft); font-size:14px; letter-spacing:.03em; text-transform:uppercase; }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 18px 20px; margin-top:16px; box-shadow:var(--shadow); }
+  .panel-title{ font-family:'Fraunces', Georgia, serif; font-size:17px; font-weight:600; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .panel-title:not(:first-child){ margin-top:22px; }
+
+  .field-row{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .field-row label{ font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .field-row input[type="text"], .field-row input[type="date"]{
+    font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    background:var(--paper); color:var(--ink);
+  }
+  .field-row input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px){ .grid-2{ grid-template-columns:1fr; } }
+
+  .field-line{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-soft); }
+  .field-line:last-of-type{ border-bottom:none; }
+  .field-line .fl-label{ font-size:14.5px; }
+  .fl-amount{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .fl-amount span{ font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .fl-amount input{
+    width:110px; text-align:right; font-family:'IBM Plex Mono', monospace; font-size:14.5px;
+    padding:7px 8px; border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--ink);
+  }
+  .fl-amount input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+
+  .row-line{ display:flex; align-items:center; gap:8px; padding:6px 0; }
+  .row-line input[type="text"]{
+    flex:1; min-width:0; font:inherit; font-size:14.5px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--ink);
+  }
+  .row-line input[type="text"]:focus, .row-line .fl-amount input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .row-remove{
+    width:28px; height:28px; border-radius:7px; border:1px solid var(--line); background:var(--card);
+    color:var(--danger); font-size:16px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  }
+  .add-row-btn{
+    margin-top:8px; font-size:13px; font-weight:600; color:var(--green-dark);
+    background:transparent; border:1px dashed var(--line); border-radius:7px; padding:7px 12px; cursor:pointer;
+  }
+
+  .totals-box{ border-top:1px dashed var(--line); margin-top:6px; padding-top:10px; }
+  .totals-row{ display:flex; justify-content:space-between; font-size:15px; font-weight:600; padding:2px 0; }
+  .totals-row .t-amount{ font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; color:var(--green-dark); }
+
+  .btn{
+    font:inherit; font-weight:600; font-size:14.5px; border-radius:8px; padding:12px 16px; border:1px solid transparent;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; width:100%;
+  }
+  .btn--primary{ background:var(--green); color:#fff; }
+  .btn--primary:hover{ background:var(--green-dark); }
+  .btn--outline{ background:transparent; border-color:var(--line); color:var(--ink); }
+  .action-stack{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .form-error{ color:var(--danger); font-size:13.5px; margin:10px 0 0; }
+
+  .report-doc{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:24px; margin-top:16px; }
+  .report-top{ display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:14px; }
+  .report-title{ font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:600; }
+  .report-meta{ text-align:right; font-size:13px; color:var(--ink-soft); }
+  .report-meta strong{ color:var(--ink); font-family:'IBM Plex Mono', monospace; display:block; font-size:14.5px; }
+  .report-info{ margin-top:14px; font-size:14px; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; }
+  .report-info .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+  .report-section-title{ font-family:'Fraunces', Georgia, serif; font-size:15.5px; font-weight:600; margin:20px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+  table.report-table{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.report-table td{ padding:5px 4px; border-bottom:1px solid var(--line-soft); }
+  table.report-table td.num{ text-align:right; font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.report-table tr.total-row td{ font-weight:700; border-top:1.5px solid var(--ink); border-bottom:none; }
+  .closing-highlight{ margin-top:10px; background:var(--green-tint); border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:baseline; }
+  .closing-highlight .label{ font-family:'Fraunces', Georgia, serif; font-size:16px; font-weight:600; }
+  .closing-highlight .amount{ font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:600; }
+
+  .no-print{ }
+  @media print{
+    body{ background:#fff; }
+    .ticket-header, .panel, .action-stack{ display:none !important; }
+    .page{ padding:0; max-width:none; }
+    .report-doc{ border:none; box-shadow:none; margin:0; }
+    .no-print{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="ticket-header">
+    <div class="ticket-header__mark">📋</div>
+    <h1 class="brand">Daily Report</h1>
+    <p class="tagline">Laporan Jualan Harian &amp; Penutupan Kunci Wang</p>
+  </header>
+
+  <section class="panel" id="formPanel">
+    <h2 class="panel-title">Maklumat Am</h2>
+    <div class="grid-2">
+      <div class="field-row">
+        <label for="reportDate">Tarikh</label>
+        <input id="reportDate" type="date">
+      </div>
+      <div class="field-row">
+        <label for="branch">Cawangan / Outlet</label>
+        <input id="branch" type="text" placeholder="cth: Ayam Gepuk - Cawangan A" autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row">
+      <label for="preparedBy">Disediakan Oleh</label>
+      <input id="preparedBy" type="text" placeholder="Nama pengurus/kerani" autocomplete="off">
+    </div>
+
+    <h2 class="panel-title">1. Ringkasan Jualan</h2>
+    <div id="salesFields"></div>
+    <div class="totals-box"><div class="totals-row"><span>Jumlah Jualan Outlet</span><span class="t-amount" id="totalSalesOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">2. Pecahan Pembayaran</h2>
+    <div id="paymentFields"></div>
+    <div class="totals-box"><div class="totals-row"><span>Jumlah Pembayaran</span><span class="t-amount" id="totalPaymentOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">3. Refund / Diskaun</h2>
+    <div id="refundRows"></div>
+    <button class="add-row-btn" id="addRefundBtn" type="button">+ Tambah Baris Refund</button>
+    <div class="totals-box"><div class="totals-row"><span>Jumlah Refund</span><span class="t-amount" id="totalRefundOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">4. Perbelanjaan Harian</h2>
+    <div id="expenseRows"></div>
+    <button class="add-row-btn" id="addExpenseBtn" type="button">+ Tambah Baris Perbelanjaan</button>
+    <div class="totals-box"><div class="totals-row"><span>Jumlah Perbelanjaan</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">5. Penutupan Kunci Wang (Cashier Closing)</h2>
+    <div class="field-line">
+      <span class="fl-label">Wang Tunai Awal / Opening Float</span>
+      <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="openingFloat" placeholder="0.00"></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Jualan Tunai (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingCashSales">0.00</span></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Perbelanjaan (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingExpenses">0.00</span></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Bank-in</span>
+      <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="bankIn" placeholder="0.00"></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Refund (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingRefund">0.00</span></div>
+    </div>
+    <div class="totals-box"><div class="totals-row"><span>Wang Tunai Akhir / Closing Float</span><span class="t-amount" id="closingFloatOut">RM 0.00</span></div></div>
+
+    <p class="form-error" id="formError" hidden></p>
+    <div class="action-stack">
+      <button class="btn btn--primary" id="genReportBtn" type="button">Jana Laporan</button>
+    </div>
+  </section>
+
+  <section class="report-doc" id="reportDoc" hidden>
+    <div class="report-top">
+      <div class="report-title">Daily Report</div>
+      <div class="report-meta">
+        No. Rujukan <strong id="repNumber">—</strong>
+        Dijana <strong id="repGeneratedAt">—</strong>
+      </div>
+    </div>
+
+    <div class="report-info">
+      <div><div class="label">Tarikh</div><div id="repDate">—</div></div>
+      <div><div class="label">Cawangan / Outlet</div><div id="repBranch">—</div></div>
+      <div><div class="label">Disediakan Oleh</div><div id="repPreparedBy">—</div></div>
+    </div>
+
+    <div class="report-section-title">1. Ringkasan Jualan</div>
+    <table class="report-table" id="repSalesTable"></table>
+
+    <div class="report-section-title">2. Pecahan Pembayaran</div>
+    <table class="report-table" id="repPaymentTable"></table>
+
+    <div class="report-section-title">3. Refund / Diskaun</div>
+    <table class="report-table" id="repRefundTable"></table>
+
+    <div class="report-section-title">4. Perbelanjaan Harian</div>
+    <table class="report-table" id="repExpenseTable"></table>
+
+    <div class="report-section-title">5. Penutupan Kunci Wang</div>
+    <table class="report-table" id="repClosingTable"></table>
+    <div class="closing-highlight">
+      <span class="label">Wang Tunai Akhir</span>
+      <span class="amount" id="repClosingFloat">RM 0.00</span>
+    </div>
+
+    <p class="form-error" id="pdfError" hidden></p>
+    <div class="action-stack no-print">
+      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Muat Turun Laporan (PDF)</button>
+      <a class="btn btn--primary" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Laporan · WhatsApp</a>
+      <button class="btn btn--outline" id="editBtn" type="button">Kembali Edit</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SELLER_WA_NUMBER = "60125146185";
+
+  var SALES_FIELDS = [
+    { key:"dineIn", label:"Dine-in" },
+    { key:"grab", label:"Delivery – GrabFood" },
+    { key:"foodpanda", label:"Delivery – Foodpanda" },
+    { key:"shopeefood", label:"Delivery – ShopeeFood" },
+    { key:"sellIngredient", label:"Sell Ingredient" },
+    { key:"event", label:"Event" },
+    { key:"catering", label:"Catering / Bulk Orders" }
+  ];
+
+  var PAYMENT_FIELDS = [
+    { key:"cash", label:"Cash Sale" },
+    { key:"qr", label:"QR Sale" },
+    { key:"card", label:"Card Sale" },
+    { key:"others", label:"Others" }
+  ];
+
+  var STORAGE_KEY = "daily_report_draft_v1";
+  var state = {
+    reportDate:"", branch:"", preparedBy:"",
+    sales:{}, payment:{},
+    refunds:[{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0}],
+    expenses:[{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0}],
+    openingFloat:0, bankIn:0
+  };
+
+  function loadState(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      var saved = JSON.parse(raw);
+      if(saved && typeof saved === "object"){
+        Object.keys(state).forEach(function(k){ if(saved[k] !== undefined) state[k] = saved[k]; });
+      }
+    }catch(e){ /* storage unavailable */ }
+  }
+  function saveState(){
+    try{ window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* ignore */ }
+  }
+
+  function money(n){
+    n = isNaN(n) ? 0 : n;
+    return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function num(v){
+    var n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function todayISO(){
+    return new Intl.DateTimeFormat("en-CA", { timeZone:"Asia/Kuala_Lumpur" }).format(new Date());
+  }
+  function displayDate(iso){
+    if(!iso) return "-";
+    var parts = iso.split("-");
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function renderAmountFields(containerId, fields, dataObj){
+    var html = "";
+    fields.forEach(function(f){
+      html += ''
+        + '<div class="field-line" data-key="' + f.key + '">'
+        +   '<span class="fl-label">' + f.label + '</span>'
+        +   '<div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (dataObj[f.key] ? dataObj[f.key] : "") + '"></div>'
+        + '</div>';
+    });
+    document.getElementById(containerId).innerHTML = html;
+  }
+
+  function renderRefundRows(){
+    var html = "";
+    state.refunds.forEach(function(r, i){
+      html += ''
+        + '<div class="row-line" data-index="' + i + '">'
+        +   '<input type="text" class="rr-orderid" placeholder="No. Pesanan / Order ID" value="' + (r.orderId || "") + '">'
+        +   '<div class="fl-amount"><span>RM</span><input type="number" class="rr-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
+        +   '<button class="row-remove" type="button" aria-label="Buang baris">×</button>'
+        + '</div>';
+    });
+    document.getElementById("refundRows").innerHTML = html;
+  }
+
+  function renderExpenseRows(){
+    var html = "";
+    state.expenses.forEach(function(r, i){
+      html += ''
+        + '<div class="row-line" data-index="' + i + '">'
+        +   '<input type="text" class="ex-item" placeholder="Item perbelanjaan" value="' + (r.item || "") + '">'
+        +   '<div class="fl-amount"><span>RM</span><input type="number" class="ex-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
+        +   '<button class="row-remove" type="button" aria-label="Buang baris">×</button>'
+        + '</div>';
+    });
+    document.getElementById("expenseRows").innerHTML = html;
+  }
+
+  function totalSales(){
+    var t = 0;
+    SALES_FIELDS.forEach(function(f){ t += num(state.sales[f.key]); });
+    return t;
+  }
+  function totalPayment(){
+    var t = 0;
+    PAYMENT_FIELDS.forEach(function(f){ t += num(state.payment[f.key]); });
+    return t;
+  }
+  function totalRefund(){
+    var t = 0;
+    state.refunds.forEach(function(r){ t += num(r.amount); });
+    return t;
+  }
+  function totalExpenses(){
+    var t = 0;
+    state.expenses.forEach(function(r){ t += num(r.amount); });
+    return t;
+  }
+  function closingFloat(){
+    return num(state.openingFloat) + num(state.payment.cash) - totalExpenses() - num(state.bankIn) - totalRefund();
+  }
+
+  function renderTotals(){
+    document.getElementById("totalSalesOut").textContent = money(totalSales());
+    document.getElementById("totalPaymentOut").textContent = money(totalPayment());
+    document.getElementById("totalRefundOut").textContent = money(totalRefund());
+    document.getElementById("totalExpenseOut").textContent = money(totalExpenses());
+    document.getElementById("closingCashSales").textContent = money(num(state.payment.cash)).replace("RM ", "");
+    document.getElementById("closingExpenses").textContent = money(totalExpenses()).replace("RM ", "");
+    document.getElementById("closingRefund").textContent = money(totalRefund()).replace("RM ", "");
+    document.getElementById("closingFloatOut").textContent = money(closingFloat());
+  }
+
+  function bindAmountFields(containerId, dataObj){
+    document.getElementById(containerId).addEventListener("input", function(e){
+      var line = e.target.closest(".field-line");
+      if(!line) return;
+      dataObj[line.getAttribute("data-key")] = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function bindRowContainer(containerId, arr, textClass, textField, amountClass){
+    var el = document.getElementById(containerId);
+    el.addEventListener("input", function(e){
+      var row = e.target.closest(".row-line");
+      if(!row) return;
+      var i = parseInt(row.getAttribute("data-index"), 10);
+      if(e.target.classList.contains(textClass)) arr[i][textField] = e.target.value;
+      if(e.target.classList.contains(amountClass)) arr[i].amount = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+    el.addEventListener("click", function(e){
+      var btn = e.target.closest(".row-remove");
+      if(!btn) return;
+      var row = btn.closest(".row-line");
+      var i = parseInt(row.getAttribute("data-index"), 10);
+      arr.splice(i, 1);
+      if(containerId === "refundRows") renderRefundRows(); else renderExpenseRows();
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function showError(msg){
+    var el = document.getElementById("formError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function clearError(){ document.getElementById("formError").hidden = true; }
+
+  function validate(){
+    clearError();
+    if(!state.reportDate){
+      showError("Sila pilih tarikh laporan.");
+      document.getElementById("reportDate").focus();
+      return false;
+    }
+    if(!state.branch.trim()){
+      showError("Sila isi nama cawangan/outlet.");
+      document.getElementById("branch").focus();
+      return false;
+    }
+    if(!state.preparedBy.trim()){
+      showError("Sila isi nama disediakan oleh.");
+      document.getElementById("preparedBy").focus();
+      return false;
+    }
+    return true;
+  }
+
+  var currentReportNumber = null;
+
+  function refNumber(){
+    return "DR-" + String(Math.floor(10000 + Math.random() * 90000));
+  }
+
+  function nowKL(){
+    var fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false
+    });
+    return fmt.format(new Date());
+  }
+
+  function buildRepTable(id, rows){
+    var html = "";
+    rows.forEach(function(r){
+      html += '<tr class="' + (r.total ? "total-row" : "") + '"><td>' + r.label + '</td><td class="num">' + money(r.amount) + '</td></tr>';
+    });
+    document.getElementById(id).innerHTML = html;
+  }
+
+  function generateReport(){
+    if(!validate()) return;
+    currentReportNumber = refNumber();
+
+    document.getElementById("repNumber").textContent = currentReportNumber;
+    document.getElementById("repGeneratedAt").textContent = nowKL();
+    document.getElementById("repDate").textContent = displayDate(state.reportDate);
+    document.getElementById("repBranch").textContent = state.branch.trim();
+    document.getElementById("repPreparedBy").textContent = state.preparedBy.trim();
+
+    var salesRows = SALES_FIELDS.map(function(f){ return { label:f.label, amount:num(state.sales[f.key]) }; });
+    salesRows.push({ label:"TOTAL SALES OUTLET", amount:totalSales(), total:true });
+    buildRepTable("repSalesTable", salesRows);
+
+    var paymentRows = PAYMENT_FIELDS.map(function(f){ return { label:f.label, amount:num(state.payment[f.key]) }; });
+    paymentRows.push({ label:"TOTAL", amount:totalPayment(), total:true });
+    buildRepTable("repPaymentTable", paymentRows);
+
+    var refundRows = state.refunds.filter(function(r){ return r.orderId.trim() || num(r.amount) > 0; })
+      .map(function(r){ return { label:r.orderId.trim() || "-", amount:num(r.amount) }; });
+    if(refundRows.length === 0) refundRows.push({ label:"Tiada refund", amount:0 });
+    refundRows.push({ label:"Total Refund", amount:totalRefund(), total:true });
+    buildRepTable("repRefundTable", refundRows);
+
+    var expenseRows = state.expenses.filter(function(r){ return r.item.trim() || num(r.amount) > 0; })
+      .map(function(r){ return { label:r.item.trim() || "-", amount:num(r.amount) }; });
+    if(expenseRows.length === 0) expenseRows.push({ label:"Tiada perbelanjaan", amount:0 });
+    expenseRows.push({ label:"Total Expenses", amount:totalExpenses(), total:true });
+    buildRepTable("repExpenseTable", expenseRows);
+
+    buildRepTable("repClosingTable", [
+      { label:"Opening Float", amount:num(state.openingFloat) },
+      { label:"Cash Sales", amount:num(state.payment.cash) },
+      { label:"Expenses", amount:totalExpenses() },
+      { label:"Bank-in", amount:num(state.bankIn) },
+      { label:"Refund", amount:totalRefund() }
+    ]);
+    document.getElementById("repClosingFloat").textContent = money(closingFloat());
+
+    document.getElementById("pdfError").hidden = true;
+    document.getElementById("formPanel").hidden = true;
+    var doc = document.getElementById("reportDoc");
+    doc.hidden = false;
+    doc.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function backToEdit(){
+    document.getElementById("reportDoc").hidden = true;
+    document.getElementById("formPanel").hidden = false;
+    document.getElementById("formPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function buildWaMessage(){
+    var lines = [];
+    lines.push("*LAPORAN JUALAN HARIAN*");
+    lines.push("No. Rujukan: " + currentReportNumber);
+    lines.push("Tarikh: " + displayDate(state.reportDate));
+    lines.push("Cawangan/Outlet: " + state.branch.trim());
+    lines.push("Disediakan oleh: " + state.preparedBy.trim());
+    lines.push("");
+    lines.push("*1. Ringkasan Jualan*");
+    SALES_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.sales[f.key]))); });
+    lines.push("Jumlah Jualan Outlet: " + money(totalSales()));
+    lines.push("");
+    lines.push("*2. Pecahan Pembayaran*");
+    PAYMENT_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.payment[f.key]))); });
+    lines.push("Jumlah: " + money(totalPayment()));
+    lines.push("");
+    lines.push("*3. Refund/Diskaun*");
+    var hasRefund = false;
+    state.refunds.forEach(function(r){
+      if(r.orderId.trim() || num(r.amount) > 0){ lines.push("- " + (r.orderId.trim() || "-") + ": " + money(num(r.amount))); hasRefund = true; }
+    });
+    if(!hasRefund) lines.push("- Tiada");
+    lines.push("Jumlah Refund: " + money(totalRefund()));
+    lines.push("");
+    lines.push("*4. Perbelanjaan Harian*");
+    var hasExpense = false;
+    state.expenses.forEach(function(r){
+      if(r.item.trim() || num(r.amount) > 0){ lines.push("- " + (r.item.trim() || "-") + ": " + money(num(r.amount))); hasExpense = true; }
+    });
+    if(!hasExpense) lines.push("- Tiada");
+    lines.push("Jumlah Perbelanjaan: " + money(totalExpenses()));
+    lines.push("");
+    lines.push("*5. Penutupan Kunci Wang*");
+    lines.push("Float Awal: " + money(num(state.openingFloat)));
+    lines.push("Jualan Tunai: " + money(num(state.payment.cash)));
+    lines.push("Perbelanjaan: " + money(totalExpenses()));
+    lines.push("Bank-in: " + money(num(state.bankIn)));
+    lines.push("Refund: " + money(totalRefund()));
+    lines.push("Float Akhir: " + money(closingFloat()));
+    return lines.join("\n");
+  }
+
+  function handleSendWaClick(e){
+    if(!currentReportNumber){ e.preventDefault(); return; }
+    var url = "https://wa.me/" + SELLER_WA_NUMBER + "?text=" + encodeURIComponent(buildWaMessage());
+    e.currentTarget.setAttribute("href", url);
+  }
+
+  function showPdfError(msg){
+    var el = document.getElementById("pdfError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function downloadReportPdf(){
+    var pdfErrorEl = document.getElementById("pdfError");
+    pdfErrorEl.hidden = true;
+    if(!currentReportNumber) return;
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showPdfError("PDF belum sedia (perlukan sambungan internet untuk muat library). Sila cuba lagi sebentar.");
+      return;
+    }
+    try{
+      buildAndSavePdf();
+    }catch(err){
+      showPdfError("Gagal jana PDF. Sila cuba lagi.");
+    }
+  }
+
+  function buildAndSavePdf(){
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit:"mm", format:"a4" });
+    var margin = 16;
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var pageHeight = doc.internal.pageSize.getHeight();
+    var colAmount = pageWidth - margin;
+    var y = margin;
+
+    function ensureSpace(need){
+      if(y + need > pageHeight - margin){
+        doc.addPage();
+        y = margin;
+      }
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("DAILY REPORT", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("No. Rujukan: " + currentReportNumber, colAmount, y, { align:"right" });
+    y += 5;
+    doc.text("Dijana: " + nowKL(), colAmount, y, { align:"right" });
+    y += 6;
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    doc.setFontSize(10);
+    doc.text("Tarikh: " + displayDate(state.reportDate), margin, y);
+    y += 5;
+    doc.text("Cawangan/Outlet: " + state.branch.trim(), margin, y);
+    y += 5;
+    doc.text("Disediakan oleh: " + state.preparedBy.trim(), margin, y);
+    y += 8;
+
+    function sectionTitle(title){
+      ensureSpace(10);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text(title, margin, y);
+      y += 2;
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+    }
+
+    function dataRow(label, amount, bold){
+      ensureSpace(6);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.text(String(label), margin, y);
+      doc.text(money(amount), colAmount, y, { align:"right" });
+      y += 6;
+    }
+
+    sectionTitle("1. RINGKASAN JUALAN");
+    SALES_FIELDS.forEach(function(f){ dataRow(f.label, num(state.sales[f.key])); });
+    dataRow("TOTAL SALES OUTLET", totalSales(), true);
+    y += 3;
+
+    sectionTitle("2. PECAHAN PEMBAYARAN");
+    PAYMENT_FIELDS.forEach(function(f){ dataRow(f.label, num(state.payment[f.key])); });
+    dataRow("TOTAL", totalPayment(), true);
+    y += 3;
+
+    sectionTitle("3. REFUND / DISKAUN");
+    var refundListed = false;
+    state.refunds.forEach(function(r){
+      if(r.orderId.trim() || num(r.amount) > 0){ dataRow(r.orderId.trim() || "-", num(r.amount)); refundListed = true; }
+    });
+    if(!refundListed) dataRow("Tiada refund", 0);
+    dataRow("TOTAL REFUND", totalRefund(), true);
+    y += 3;
+
+    sectionTitle("4. PERBELANJAAN HARIAN");
+    var expenseListed = false;
+    state.expenses.forEach(function(r){
+      if(r.item.trim() || num(r.amount) > 0){ dataRow(r.item.trim() || "-", num(r.amount)); expenseListed = true; }
+    });
+    if(!expenseListed) dataRow("Tiada perbelanjaan", 0);
+    dataRow("TOTAL EXPENSES", totalExpenses(), true);
+    y += 3;
+
+    sectionTitle("5. PENUTUPAN KUNCI WANG");
+    dataRow("Opening Float", num(state.openingFloat));
+    dataRow("Cash Sales", num(state.payment.cash));
+    dataRow("Expenses", totalExpenses());
+    dataRow("Bank-in", num(state.bankIn));
+    dataRow("Refund", totalRefund());
+    ensureSpace(10);
+    y += 2;
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12.5);
+    doc.text("CLOSING FLOAT", margin, y);
+    doc.text(money(closingFloat()), colAmount, y, { align:"right" });
+
+    doc.save("Daily-Report-" + state.reportDate + "-" + currentReportNumber + ".pdf");
+  }
+
+  function bindEvents(){
+    bindAmountFields("salesFields", state.sales);
+    bindAmountFields("paymentFields", state.payment);
+    bindRowContainer("refundRows", state.refunds, "rr-orderid", "orderId", "rr-amount");
+    bindRowContainer("expenseRows", state.expenses, "ex-item", "item", "ex-amount");
+
+    document.getElementById("reportDate").addEventListener("input", function(e){ state.reportDate = e.target.value; saveState(); });
+    document.getElementById("branch").addEventListener("input", function(e){ state.branch = e.target.value; saveState(); });
+    document.getElementById("preparedBy").addEventListener("input", function(e){ state.preparedBy = e.target.value; saveState(); });
+    document.getElementById("openingFloat").addEventListener("input", function(e){ state.openingFloat = num(e.target.value); saveState(); renderTotals(); });
+    document.getElementById("bankIn").addEventListener("input", function(e){ state.bankIn = num(e.target.value); saveState(); renderTotals(); });
+
+    document.getElementById("addRefundBtn").addEventListener("click", function(){
+      state.refunds.push({ orderId:"", amount:0 });
+      renderRefundRows();
+      saveState();
+    });
+    document.getElementById("addExpenseBtn").addEventListener("click", function(){
+      state.expenses.push({ item:"", amount:0 });
+      renderExpenseRows();
+      saveState();
+    });
+
+    document.getElementById("genReportBtn").addEventListener("click", generateReport);
+    document.getElementById("downloadPdfBtn").addEventListener("click", downloadReportPdf);
+    document.getElementById("sendWaBtn").addEventListener("click", handleSendWaClick);
+    document.getElementById("editBtn").addEventListener("click", backToEdit);
+  }
+
+  function init(){
+    loadState();
+    if(!state.reportDate) state.reportDate = todayISO();
+
+    document.getElementById("reportDate").value = state.reportDate;
+    document.getElementById("branch").value = state.branch;
+    document.getElementById("preparedBy").value = state.preparedBy;
+    document.getElementById("openingFloat").value = state.openingFloat || "";
+    document.getElementById("bankIn").value = state.bankIn || "";
+
+    renderAmountFields("salesFields", SALES_FIELDS, state.sales);
+    renderAmountFields("paymentFields", PAYMENT_FIELDS, state.payment);
+    renderRefundRows();
+    renderExpenseRows();
+    renderTotals();
+    bindEvents();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+})();
+</script>
+</body>
+</html>
