@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ms">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <style>
   :root{
     --ink:#241f1a; --ink-soft:#6a604f; --paper:#ece3d0; --card:#fbf8f1; --card-alt:#f3ecdb;
@@ -78,6 +79,20 @@
     background:transparent; border:1px dashed var(--line); border-radius:7px; padding:7px 12px; cursor:pointer;
   }
 
+  .expense-block{ padding:10px 0; border-bottom:1px solid var(--line-soft); }
+  .expense-block:last-of-type{ border-bottom:none; }
+  .expense-block .row-line{ padding:0 0 8px; }
+  .expense-scan-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .scan-btn{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+    color:var(--green-dark); background:var(--green-tint); border:1px solid var(--line); border-radius:999px;
+    padding:6px 12px; cursor:pointer;
+  }
+  .scan-btn.is-scanning{ opacity:.6; pointer-events:none; }
+  .scan-status{ font-size:12.5px; color:var(--ink-soft); }
+  .scan-status.is-ok{ color:var(--green-dark); }
+  .scan-status.is-warn{ color:var(--spice); }
+
   .totals-box{ border-top:1px dashed var(--line); margin-top:6px; padding-top:10px; }
   .totals-row{ display:flex; justify-content:space-between; font-size:15px; font-weight:600; padding:2px 0; }
   .totals-row .t-amount{ font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; color:var(--green-dark); }
@@ -91,6 +106,7 @@
   .btn--outline{ background:transparent; border-color:var(--line); color:var(--ink); }
   .action-stack{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
   .form-error{ color:var(--danger); font-size:13.5px; margin:10px 0 0; }
+  .form-hint{ color:var(--ink-soft); font-size:12.5px; margin:8px 0 0; }
 
   .report-doc{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:24px; margin-top:16px; }
   .report-top{ display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:14px; }
@@ -124,55 +140,56 @@
   <header class="ticket-header">
     <div class="ticket-header__mark">📋</div>
     <h1 class="brand">Daily Report</h1>
-    <p class="tagline">Laporan Jualan Harian &amp; Penutupan Kunci Wang</p>
+    <p class="tagline">Daily Sales Report &amp; Cashier Closing</p>
   </header>
 
   <section class="panel" id="formPanel">
-    <h2 class="panel-title">Maklumat Am</h2>
+    <h2 class="panel-title">General Information</h2>
     <div class="grid-2">
       <div class="field-row">
-        <label for="reportDate">Tarikh</label>
+        <label for="reportDate">Date</label>
         <input id="reportDate" type="date">
       </div>
       <div class="field-row">
-        <label for="branch">Cawangan / Outlet</label>
-        <input id="branch" type="text" placeholder="cth: Ayam Gepuk - Cawangan A" autocomplete="off">
+        <label for="branch">Branch / Outlet</label>
+        <input id="branch" type="text" placeholder="e.g. Ayam Gepuk - Branch A" autocomplete="off">
       </div>
     </div>
     <div class="field-row">
-      <label for="preparedBy">Disediakan Oleh</label>
-      <input id="preparedBy" type="text" placeholder="Nama pengurus/kerani" autocomplete="off">
+      <label for="preparedBy">Prepared By</label>
+      <input id="preparedBy" type="text" placeholder="Manager / cashier name" autocomplete="off">
     </div>
 
-    <h2 class="panel-title">1. Ringkasan Jualan</h2>
+    <h2 class="panel-title">1. Sales Summary</h2>
     <div id="salesFields"></div>
-    <div class="totals-box"><div class="totals-row"><span>Jumlah Jualan Outlet</span><span class="t-amount" id="totalSalesOut">RM 0.00</span></div></div>
+    <div class="totals-box"><div class="totals-row"><span>Total Sales Outlet</span><span class="t-amount" id="totalSalesOut">RM 0.00</span></div></div>
 
-    <h2 class="panel-title">2. Pecahan Pembayaran</h2>
+    <h2 class="panel-title">2. Payment Breakdown</h2>
     <div id="paymentFields"></div>
-    <div class="totals-box"><div class="totals-row"><span>Jumlah Pembayaran</span><span class="t-amount" id="totalPaymentOut">RM 0.00</span></div></div>
+    <div class="totals-box"><div class="totals-row"><span>Total</span><span class="t-amount" id="totalPaymentOut">RM 0.00</span></div></div>
 
-    <h2 class="panel-title">3. Refund / Diskaun</h2>
+    <h2 class="panel-title">3. Refunds / Discounts</h2>
     <div id="refundRows"></div>
-    <button class="add-row-btn" id="addRefundBtn" type="button">+ Tambah Baris Refund</button>
-    <div class="totals-box"><div class="totals-row"><span>Jumlah Refund</span><span class="t-amount" id="totalRefundOut">RM 0.00</span></div></div>
+    <button class="add-row-btn" id="addRefundBtn" type="button">+ Add Refund Row</button>
+    <div class="totals-box"><div class="totals-row"><span>Total Refund</span><span class="t-amount" id="totalRefundOut">RM 0.00</span></div></div>
 
-    <h2 class="panel-title">4. Perbelanjaan Harian</h2>
+    <h2 class="panel-title">4. Daily Expenses</h2>
     <div id="expenseRows"></div>
-    <button class="add-row-btn" id="addExpenseBtn" type="button">+ Tambah Baris Perbelanjaan</button>
-    <div class="totals-box"><div class="totals-row"><span>Jumlah Perbelanjaan</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
+    <button class="add-row-btn" id="addExpenseBtn" type="button">+ Add Expense Row</button>
+    <p class="form-hint">Tip: tap "Scan Receipt" to auto-fill the item and amount from a photo, then verify before saving. Photos are processed on this device only and are never uploaded anywhere.</p>
+    <div class="totals-box"><div class="totals-row"><span>Total Expenses</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
 
-    <h2 class="panel-title">5. Penutupan Kunci Wang (Cashier Closing)</h2>
+    <h2 class="panel-title">5. Cashier Closing</h2>
     <div class="field-line">
-      <span class="fl-label">Wang Tunai Awal / Opening Float</span>
+      <span class="fl-label">Opening Float</span>
       <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="openingFloat" placeholder="0.00"></div>
     </div>
     <div class="field-line">
-      <span class="fl-label">Jualan Tunai (auto)</span>
+      <span class="fl-label">Cash Sales (auto)</span>
       <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingCashSales">0.00</span></div>
     </div>
     <div class="field-line">
-      <span class="fl-label">Perbelanjaan (auto)</span>
+      <span class="fl-label">Expenses (auto)</span>
       <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingExpenses">0.00</span></div>
     </div>
     <div class="field-line">
@@ -183,11 +200,11 @@
       <span class="fl-label">Refund (auto)</span>
       <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingRefund">0.00</span></div>
     </div>
-    <div class="totals-box"><div class="totals-row"><span>Wang Tunai Akhir / Closing Float</span><span class="t-amount" id="closingFloatOut">RM 0.00</span></div></div>
+    <div class="totals-box"><div class="totals-row"><span>Closing Float</span><span class="t-amount" id="closingFloatOut">RM 0.00</span></div></div>
 
     <p class="form-error" id="formError" hidden></p>
     <div class="action-stack">
-      <button class="btn btn--primary" id="genReportBtn" type="button">Jana Laporan</button>
+      <button class="btn btn--primary" id="genReportBtn" type="button">Generate Report</button>
     </div>
   </section>
 
@@ -195,41 +212,41 @@
     <div class="report-top">
       <div class="report-title">Daily Report</div>
       <div class="report-meta">
-        No. Rujukan <strong id="repNumber">—</strong>
-        Dijana <strong id="repGeneratedAt">—</strong>
+        Reference No. <strong id="repNumber">—</strong>
+        Generated <strong id="repGeneratedAt">—</strong>
       </div>
     </div>
 
     <div class="report-info">
-      <div><div class="label">Tarikh</div><div id="repDate">—</div></div>
-      <div><div class="label">Cawangan / Outlet</div><div id="repBranch">—</div></div>
-      <div><div class="label">Disediakan Oleh</div><div id="repPreparedBy">—</div></div>
+      <div><div class="label">Date</div><div id="repDate">—</div></div>
+      <div><div class="label">Branch / Outlet</div><div id="repBranch">—</div></div>
+      <div><div class="label">Prepared By</div><div id="repPreparedBy">—</div></div>
     </div>
 
-    <div class="report-section-title">1. Ringkasan Jualan</div>
+    <div class="report-section-title">1. Sales Summary</div>
     <table class="report-table" id="repSalesTable"></table>
 
-    <div class="report-section-title">2. Pecahan Pembayaran</div>
+    <div class="report-section-title">2. Payment Breakdown</div>
     <table class="report-table" id="repPaymentTable"></table>
 
-    <div class="report-section-title">3. Refund / Diskaun</div>
+    <div class="report-section-title">3. Refunds / Discounts</div>
     <table class="report-table" id="repRefundTable"></table>
 
-    <div class="report-section-title">4. Perbelanjaan Harian</div>
+    <div class="report-section-title">4. Daily Expenses</div>
     <table class="report-table" id="repExpenseTable"></table>
 
-    <div class="report-section-title">5. Penutupan Kunci Wang</div>
+    <div class="report-section-title">5. Cashier Closing</div>
     <table class="report-table" id="repClosingTable"></table>
     <div class="closing-highlight">
-      <span class="label">Wang Tunai Akhir</span>
+      <span class="label">Closing Float</span>
       <span class="amount" id="repClosingFloat">RM 0.00</span>
     </div>
 
     <p class="form-error" id="pdfError" hidden></p>
     <div class="action-stack no-print">
-      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Muat Turun Laporan (PDF)</button>
-      <a class="btn btn--primary" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Laporan · WhatsApp</a>
-      <button class="btn btn--outline" id="editBtn" type="button">Kembali Edit</button>
+      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Download Report (PDF)</button>
+      <a class="btn btn--primary" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report · WhatsApp</a>
+      <button class="btn btn--outline" id="editBtn" type="button">Back to Edit</button>
     </div>
   </section>
 
@@ -258,7 +275,7 @@
     { key:"others", label:"Others" }
   ];
 
-  var STORAGE_KEY = "daily_report_draft_v1";
+  var STORAGE_KEY = "daily_report_draft_v2_en";
   var state = {
     reportDate:"", branch:"", preparedBy:"",
     sales:{}, payment:{},
@@ -316,9 +333,9 @@
     state.refunds.forEach(function(r, i){
       html += ''
         + '<div class="row-line" data-index="' + i + '">'
-        +   '<input type="text" class="rr-orderid" placeholder="No. Pesanan / Order ID" value="' + (r.orderId || "") + '">'
+        +   '<input type="text" class="rr-orderid" placeholder="Order ID" value="' + (r.orderId || "") + '">'
         +   '<div class="fl-amount"><span>RM</span><input type="number" class="rr-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
-        +   '<button class="row-remove" type="button" aria-label="Buang baris">×</button>'
+        +   '<button class="row-remove" type="button" aria-label="Remove row">×</button>'
         + '</div>';
     });
     document.getElementById("refundRows").innerHTML = html;
@@ -328,10 +345,16 @@
     var html = "";
     state.expenses.forEach(function(r, i){
       html += ''
-        + '<div class="row-line" data-index="' + i + '">'
-        +   '<input type="text" class="ex-item" placeholder="Item perbelanjaan" value="' + (r.item || "") + '">'
-        +   '<div class="fl-amount"><span>RM</span><input type="number" class="ex-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
-        +   '<button class="row-remove" type="button" aria-label="Buang baris">×</button>'
+        + '<div class="expense-block" data-index="' + i + '">'
+        +   '<div class="row-line">'
+        +     '<input type="text" class="ex-item" placeholder="Expense item / vendor" value="' + (r.item || "") + '">'
+        +     '<div class="fl-amount"><span>RM</span><input type="number" class="ex-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
+        +     '<button class="row-remove" type="button" aria-label="Remove row">×</button>'
+        +   '</div>'
+        +   '<div class="expense-scan-row">'
+        +     '<label class="scan-btn">📷 Scan Receipt<input type="file" accept="image/*" capture="environment" class="ex-receipt-input" hidden></label>'
+        +     '<span class="scan-status"></span>'
+        +   '</div>'
         + '</div>';
     });
     document.getElementById("expenseRows").innerHTML = html;
@@ -382,14 +405,14 @@
     });
   }
 
-  function bindRowContainer(containerId, arr, textClass, textField, amountClass){
-    var el = document.getElementById(containerId);
+  function bindRefundRows(){
+    var el = document.getElementById("refundRows");
     el.addEventListener("input", function(e){
       var row = e.target.closest(".row-line");
       if(!row) return;
       var i = parseInt(row.getAttribute("data-index"), 10);
-      if(e.target.classList.contains(textClass)) arr[i][textField] = e.target.value;
-      if(e.target.classList.contains(amountClass)) arr[i].amount = num(e.target.value);
+      if(e.target.classList.contains("rr-orderid")) state.refunds[i].orderId = e.target.value;
+      if(e.target.classList.contains("rr-amount")) state.refunds[i].amount = num(e.target.value);
       saveState();
       renderTotals();
     });
@@ -398,8 +421,118 @@
       if(!btn) return;
       var row = btn.closest(".row-line");
       var i = parseInt(row.getAttribute("data-index"), 10);
-      arr.splice(i, 1);
-      if(containerId === "refundRows") renderRefundRows(); else renderExpenseRows();
+      state.refunds.splice(i, 1);
+      renderRefundRows();
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function setScanStatus(index, text, kind){
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    if(!block) return;
+    var statusEl = block.querySelector(".scan-status");
+    statusEl.textContent = text;
+    statusEl.className = "scan-status" + (kind ? " is-" + kind : "");
+  }
+
+  function normalizeAmount(raw){
+    var s = raw.replace(/\s/g, "");
+    if(s.indexOf(",") !== -1 && s.indexOf(".") !== -1){
+      s = s.replace(/,/g, "");
+    }else if(s.indexOf(",") !== -1){
+      s = /,\d{2}$/.test(s) ? s.replace(",", ".") : s.replace(/,/g, "");
+    }
+    return parseFloat(s);
+  }
+
+  function parseReceiptText(text){
+    var rawLines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 0; });
+
+    var vendor = "";
+    for(var i = 0; i < Math.min(rawLines.length, 6); i++){
+      if(/[A-Za-z]{3,}/.test(rawLines[i])){ vendor = rawLines[i]; break; }
+    }
+
+    var amount = null;
+    var totalLineRegex = /(grand\s*total|total|jumlah|amount\s*due)[^0-9]{0,15}(\d{1,3}(?:[,.]\d{3})*[.,]\d{2})/i;
+    for(var j = rawLines.length - 1; j >= 0; j--){
+      var m = rawLines[j].match(totalLineRegex);
+      if(m){ amount = normalizeAmount(m[2]); break; }
+    }
+    if(amount === null){
+      var allNums = text.match(/\d{1,3}(?:[,.]\d{3})*[.,]\d{2}/g) || [];
+      var parsed = allNums.map(normalizeAmount).filter(function(n){ return !isNaN(n); });
+      if(parsed.length) amount = Math.max.apply(null, parsed);
+    }
+
+    return { vendor:vendor, amount:amount };
+  }
+
+  function handleReceiptFile(index, file){
+    if(!file) return;
+    if(!window.Tesseract){
+      setScanStatus(index, "Receipt scanning is not ready (needs internet connection). Please fill in manually.", "warn");
+      return;
+    }
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    var scanBtn = block.querySelector(".scan-btn");
+    scanBtn.classList.add("is-scanning");
+    setScanStatus(index, "Scanning receipt... this may take a few seconds.");
+
+    window.Tesseract.recognize(file, "eng")
+      .then(function(result){
+        var parsed = parseReceiptText(result.data.text || "");
+        var itemInput = block.querySelector(".ex-item");
+        var amountInput = block.querySelector(".ex-amount");
+
+        if(parsed.vendor){ state.expenses[index].item = parsed.vendor; itemInput.value = parsed.vendor; }
+        if(parsed.amount !== null){ state.expenses[index].amount = parsed.amount; amountInput.value = parsed.amount; }
+        saveState();
+        renderTotals();
+
+        if(parsed.vendor && parsed.amount !== null){
+          setScanStatus(index, "Detected: " + parsed.vendor + " — " + money(parsed.amount) + ". Please verify.", "ok");
+        }else if(parsed.amount !== null){
+          setScanStatus(index, "Detected amount " + money(parsed.amount) + ". Please fill in the vendor name.", "warn");
+        }else{
+          setScanStatus(index, "Could not read the receipt clearly. Please enter the details manually.", "warn");
+        }
+      })
+      .catch(function(){
+        setScanStatus(index, "Could not scan this photo. Please enter the details manually.", "warn");
+      })
+      .then(function(){
+        scanBtn.classList.remove("is-scanning");
+      });
+  }
+
+  function bindExpenseRows(){
+    var el = document.getElementById("expenseRows");
+    el.addEventListener("input", function(e){
+      var block = e.target.closest(".expense-block");
+      if(!block) return;
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      if(e.target.classList.contains("ex-item")) state.expenses[i].item = e.target.value;
+      if(e.target.classList.contains("ex-amount")) state.expenses[i].amount = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+    el.addEventListener("change", function(e){
+      if(!e.target.classList.contains("ex-receipt-input")) return;
+      var block = e.target.closest(".expense-block");
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      var file = e.target.files && e.target.files[0];
+      handleReceiptFile(i, file);
+      e.target.value = "";
+    });
+    el.addEventListener("click", function(e){
+      var btn = e.target.closest(".row-remove");
+      if(!btn) return;
+      var block = btn.closest(".expense-block");
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      state.expenses.splice(i, 1);
+      renderExpenseRows();
       saveState();
       renderTotals();
     });
@@ -415,17 +548,17 @@
   function validate(){
     clearError();
     if(!state.reportDate){
-      showError("Sila pilih tarikh laporan.");
+      showError("Please select the report date.");
       document.getElementById("reportDate").focus();
       return false;
     }
     if(!state.branch.trim()){
-      showError("Sila isi nama cawangan/outlet.");
+      showError("Please enter the branch/outlet name.");
       document.getElementById("branch").focus();
       return false;
     }
     if(!state.preparedBy.trim()){
-      showError("Sila isi nama disediakan oleh.");
+      showError("Please enter the prepared by name.");
       document.getElementById("preparedBy").focus();
       return false;
     }
@@ -473,13 +606,13 @@
 
     var refundRows = state.refunds.filter(function(r){ return r.orderId.trim() || num(r.amount) > 0; })
       .map(function(r){ return { label:r.orderId.trim() || "-", amount:num(r.amount) }; });
-    if(refundRows.length === 0) refundRows.push({ label:"Tiada refund", amount:0 });
+    if(refundRows.length === 0) refundRows.push({ label:"No refunds", amount:0 });
     refundRows.push({ label:"Total Refund", amount:totalRefund(), total:true });
     buildRepTable("repRefundTable", refundRows);
 
     var expenseRows = state.expenses.filter(function(r){ return r.item.trim() || num(r.amount) > 0; })
       .map(function(r){ return { label:r.item.trim() || "-", amount:num(r.amount) }; });
-    if(expenseRows.length === 0) expenseRows.push({ label:"Tiada perbelanjaan", amount:0 });
+    if(expenseRows.length === 0) expenseRows.push({ label:"No expenses", amount:0 });
     expenseRows.push({ label:"Total Expenses", amount:totalExpenses(), total:true });
     buildRepTable("repExpenseTable", expenseRows);
 
@@ -507,43 +640,43 @@
 
   function buildWaMessage(){
     var lines = [];
-    lines.push("*LAPORAN JUALAN HARIAN*");
-    lines.push("No. Rujukan: " + currentReportNumber);
-    lines.push("Tarikh: " + displayDate(state.reportDate));
-    lines.push("Cawangan/Outlet: " + state.branch.trim());
-    lines.push("Disediakan oleh: " + state.preparedBy.trim());
+    lines.push("*DAILY SALES REPORT*");
+    lines.push("Reference No.: " + currentReportNumber);
+    lines.push("Date: " + displayDate(state.reportDate));
+    lines.push("Branch/Outlet: " + state.branch.trim());
+    lines.push("Prepared by: " + state.preparedBy.trim());
     lines.push("");
-    lines.push("*1. Ringkasan Jualan*");
+    lines.push("*1. Sales Summary*");
     SALES_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.sales[f.key]))); });
-    lines.push("Jumlah Jualan Outlet: " + money(totalSales()));
+    lines.push("Total Sales Outlet: " + money(totalSales()));
     lines.push("");
-    lines.push("*2. Pecahan Pembayaran*");
+    lines.push("*2. Payment Breakdown*");
     PAYMENT_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.payment[f.key]))); });
-    lines.push("Jumlah: " + money(totalPayment()));
+    lines.push("Total: " + money(totalPayment()));
     lines.push("");
-    lines.push("*3. Refund/Diskaun*");
+    lines.push("*3. Refunds/Discounts*");
     var hasRefund = false;
     state.refunds.forEach(function(r){
       if(r.orderId.trim() || num(r.amount) > 0){ lines.push("- " + (r.orderId.trim() || "-") + ": " + money(num(r.amount))); hasRefund = true; }
     });
-    if(!hasRefund) lines.push("- Tiada");
-    lines.push("Jumlah Refund: " + money(totalRefund()));
+    if(!hasRefund) lines.push("- None");
+    lines.push("Total Refund: " + money(totalRefund()));
     lines.push("");
-    lines.push("*4. Perbelanjaan Harian*");
+    lines.push("*4. Daily Expenses*");
     var hasExpense = false;
     state.expenses.forEach(function(r){
       if(r.item.trim() || num(r.amount) > 0){ lines.push("- " + (r.item.trim() || "-") + ": " + money(num(r.amount))); hasExpense = true; }
     });
-    if(!hasExpense) lines.push("- Tiada");
-    lines.push("Jumlah Perbelanjaan: " + money(totalExpenses()));
+    if(!hasExpense) lines.push("- None");
+    lines.push("Total Expenses: " + money(totalExpenses()));
     lines.push("");
-    lines.push("*5. Penutupan Kunci Wang*");
-    lines.push("Float Awal: " + money(num(state.openingFloat)));
-    lines.push("Jualan Tunai: " + money(num(state.payment.cash)));
-    lines.push("Perbelanjaan: " + money(totalExpenses()));
+    lines.push("*5. Cashier Closing*");
+    lines.push("Opening Float: " + money(num(state.openingFloat)));
+    lines.push("Cash Sales: " + money(num(state.payment.cash)));
+    lines.push("Expenses: " + money(totalExpenses()));
     lines.push("Bank-in: " + money(num(state.bankIn)));
     lines.push("Refund: " + money(totalRefund()));
-    lines.push("Float Akhir: " + money(closingFloat()));
+    lines.push("Closing Float: " + money(closingFloat()));
     return lines.join("\n");
   }
 
@@ -564,13 +697,13 @@
     pdfErrorEl.hidden = true;
     if(!currentReportNumber) return;
     if(!window.jspdf || !window.jspdf.jsPDF){
-      showPdfError("PDF belum sedia (perlukan sambungan internet untuk muat library). Sila cuba lagi sebentar.");
+      showPdfError("PDF is not ready (internet connection required to load the library). Please try again in a moment.");
       return;
     }
     try{
       buildAndSavePdf();
     }catch(err){
-      showPdfError("Gagal jana PDF. Sila cuba lagi.");
+      showPdfError("Could not generate the PDF. Please try again.");
     }
   }
 
@@ -595,9 +728,9 @@
     doc.text("DAILY REPORT", margin, y);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text("No. Rujukan: " + currentReportNumber, colAmount, y, { align:"right" });
+    doc.text("Reference No.: " + currentReportNumber, colAmount, y, { align:"right" });
     y += 5;
-    doc.text("Dijana: " + nowKL(), colAmount, y, { align:"right" });
+    doc.text("Generated: " + nowKL(), colAmount, y, { align:"right" });
     y += 6;
     doc.setDrawColor(180);
     doc.setLineWidth(0.4);
@@ -605,11 +738,11 @@
     y += 6;
 
     doc.setFontSize(10);
-    doc.text("Tarikh: " + displayDate(state.reportDate), margin, y);
+    doc.text("Date: " + displayDate(state.reportDate), margin, y);
     y += 5;
-    doc.text("Cawangan/Outlet: " + state.branch.trim(), margin, y);
+    doc.text("Branch/Outlet: " + state.branch.trim(), margin, y);
     y += 5;
-    doc.text("Disediakan oleh: " + state.preparedBy.trim(), margin, y);
+    doc.text("Prepared by: " + state.preparedBy.trim(), margin, y);
     y += 8;
 
     function sectionTitle(title){
@@ -633,35 +766,35 @@
       y += 6;
     }
 
-    sectionTitle("1. RINGKASAN JUALAN");
+    sectionTitle("1. SALES SUMMARY");
     SALES_FIELDS.forEach(function(f){ dataRow(f.label, num(state.sales[f.key])); });
     dataRow("TOTAL SALES OUTLET", totalSales(), true);
     y += 3;
 
-    sectionTitle("2. PECAHAN PEMBAYARAN");
+    sectionTitle("2. PAYMENT BREAKDOWN");
     PAYMENT_FIELDS.forEach(function(f){ dataRow(f.label, num(state.payment[f.key])); });
     dataRow("TOTAL", totalPayment(), true);
     y += 3;
 
-    sectionTitle("3. REFUND / DISKAUN");
+    sectionTitle("3. REFUNDS / DISCOUNTS");
     var refundListed = false;
     state.refunds.forEach(function(r){
       if(r.orderId.trim() || num(r.amount) > 0){ dataRow(r.orderId.trim() || "-", num(r.amount)); refundListed = true; }
     });
-    if(!refundListed) dataRow("Tiada refund", 0);
+    if(!refundListed) dataRow("No refunds", 0);
     dataRow("TOTAL REFUND", totalRefund(), true);
     y += 3;
 
-    sectionTitle("4. PERBELANJAAN HARIAN");
+    sectionTitle("4. DAILY EXPENSES");
     var expenseListed = false;
     state.expenses.forEach(function(r){
       if(r.item.trim() || num(r.amount) > 0){ dataRow(r.item.trim() || "-", num(r.amount)); expenseListed = true; }
     });
-    if(!expenseListed) dataRow("Tiada perbelanjaan", 0);
+    if(!expenseListed) dataRow("No expenses", 0);
     dataRow("TOTAL EXPENSES", totalExpenses(), true);
     y += 3;
 
-    sectionTitle("5. PENUTUPAN KUNCI WANG");
+    sectionTitle("5. CASHIER CLOSING");
     dataRow("Opening Float", num(state.openingFloat));
     dataRow("Cash Sales", num(state.payment.cash));
     dataRow("Expenses", totalExpenses());
@@ -683,8 +816,8 @@
   function bindEvents(){
     bindAmountFields("salesFields", state.sales);
     bindAmountFields("paymentFields", state.payment);
-    bindRowContainer("refundRows", state.refunds, "rr-orderid", "orderId", "rr-amount");
-    bindRowContainer("expenseRows", state.expenses, "ex-item", "item", "ex-amount");
+    bindRefundRows();
+    bindExpenseRows();
 
     document.getElementById("reportDate").addEventListener("input", function(e){ state.reportDate = e.target.value; saveState(); });
     document.getElementById("branch").addEventListener("input", function(e){ state.branch = e.target.value; saveState(); });
