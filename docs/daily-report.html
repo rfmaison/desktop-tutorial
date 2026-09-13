@@ -92,6 +92,13 @@
   .scan-status{ font-size:12.5px; color:var(--ink-soft); }
   .scan-status.is-ok{ color:var(--green-dark); }
   .scan-status.is-warn{ color:var(--spice); }
+  .receipt-thumb{ position:relative; display:inline-flex; }
+  .receipt-thumb img{ width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--line); display:block; }
+  .receipt-remove{
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
+    border:1px solid var(--line); background:var(--card); color:var(--danger); font-size:11px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  }
 
   .totals-box{ border-top:1px dashed var(--line); margin-top:6px; padding-top:10px; }
   .totals-row{ display:flex; justify-content:space-between; font-size:15px; font-weight:600; padding:2px 0; }
@@ -176,7 +183,7 @@
     <h2 class="panel-title">4. Daily Expenses</h2>
     <div id="expenseRows"></div>
     <button class="add-row-btn" id="addExpenseBtn" type="button">+ Add Expense Row</button>
-    <p class="form-hint">Tip: tap "Scan Receipt" to auto-fill the item and amount from a photo, then verify before saving. Photos are processed on this device only and are never uploaded anywhere.</p>
+    <p class="form-hint">Tip: tap "Scan Receipt" to auto-fill the item and amount from a photo, then verify before saving. The photo itself is kept and attached as a page at the end of the generated PDF report. Photos are processed on this device only and are never uploaded anywhere.</p>
     <div class="totals-box"><div class="totals-row"><span>Total Expenses</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
 
     <h2 class="panel-title">5. Cashier Closing</h2>
@@ -342,6 +349,11 @@
     document.getElementById("refundRows").innerHTML = html;
   }
 
+  function receiptThumbHtml(entry){
+    if(!entry.receiptDataUrl) return "";
+    return '<span class="receipt-thumb"><img src="' + entry.receiptDataUrl + '" alt="Receipt photo"><button type="button" class="receipt-remove" aria-label="Remove receipt photo">×</button></span>';
+  }
+
   function renderExpenseRows(){
     var html = "";
     state.expenses.forEach(function(r, i){
@@ -355,6 +367,7 @@
         +   '<div class="expense-scan-row">'
         +     '<label class="scan-btn">📷 Scan Receipt<input type="file" accept="image/*" capture="environment" class="ex-receipt-input" hidden></label>'
         +     '<span class="scan-status"></span>'
+        +     '<span class="receipt-thumb-slot">' + receiptThumbHtml(r) + '</span>'
         +   '</div>'
         + '</div>';
     });
@@ -470,8 +483,39 @@
     return { vendor:vendor, amount:amount };
   }
 
+  function storeReceiptImage(index, file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var img = new Image();
+      img.onload = function(){
+        state.expenses[index].receiptDataUrl = dataUrl;
+        state.expenses[index].receiptWidth = img.naturalWidth;
+        state.expenses[index].receiptHeight = img.naturalHeight;
+        saveState();
+        var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+        if(block) block.querySelector(".receipt-thumb-slot").innerHTML = receiptThumbHtml(state.expenses[index]);
+      };
+      img.onerror = function(){
+        setScanStatus(index, "Photo saved for scanning, but couldn't be attached as an image (unsupported format). Try a JPEG/PNG photo instead.", "warn");
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeReceiptImage(index){
+    delete state.expenses[index].receiptDataUrl;
+    delete state.expenses[index].receiptWidth;
+    delete state.expenses[index].receiptHeight;
+    saveState();
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    if(block) block.querySelector(".receipt-thumb-slot").innerHTML = "";
+  }
+
   function handleReceiptFile(index, file){
     if(!file) return;
+    storeReceiptImage(index, file);
     if(!window.Tesseract){
       setScanStatus(index, "Receipt scanning is not ready (needs internet connection). Please fill in manually.", "warn");
       return;
@@ -528,6 +572,12 @@
       e.target.value = "";
     });
     el.addEventListener("click", function(e){
+      var removeBtn = e.target.closest(".receipt-remove");
+      if(removeBtn){
+        var receiptBlock = removeBtn.closest(".expense-block");
+        removeReceiptImage(parseInt(receiptBlock.getAttribute("data-index"), 10));
+        return;
+      }
       var btn = e.target.closest(".row-remove");
       if(!btn) return;
       var block = btn.closest(".expense-block");
@@ -840,7 +890,44 @@
     doc.text("CLOSING FLOAT", margin, y);
     doc.text(money(closingFloat()), colAmount, y, { align:"right" });
 
+    var receiptsToEmbed = state.expenses.filter(function(r){ return r.receiptDataUrl && r.receiptWidth && r.receiptHeight; });
+    if(receiptsToEmbed.length){
+      doc.addPage();
+      y = margin;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("RECEIPT ATTACHMENTS", margin, y);
+      y += 3;
+      doc.setLineWidth(0.4);
+      doc.setDrawColor(180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      var maxW = pageWidth - margin * 2;
+      var maxH = 110;
+      receiptsToEmbed.forEach(function(r, idx){
+        var aspect = r.receiptHeight / r.receiptWidth;
+        var w = maxW;
+        var h = w * aspect;
+        if(h > maxH){ h = maxH; w = h / aspect; }
+        ensureSpace(h + 14);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.text((idx + 1) + ". " + (r.item.trim() || "Expense") + " — " + money(num(r.amount)), margin, y);
+        y += 4;
+        doc.addImage(r.receiptDataUrl, imageFormatFromDataUrl(r.receiptDataUrl), margin, y, w, h);
+        y += h + 10;
+      });
+    }
+
     return doc;
+  }
+
+  function imageFormatFromDataUrl(dataUrl){
+    var m = /^data:image\/(\w+);/.exec(dataUrl);
+    if(!m) return "JPEG";
+    var type = m[1].toUpperCase();
+    return type === "JPG" ? "JPEG" : type;
   }
 
   function bindEvents(){
