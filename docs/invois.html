@@ -254,6 +254,7 @@
       <a class="btn btn--primary" id="sendSellerBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Order kepada RF Maison</a>
       <button class="btn btn--outline" id="editBtn" type="button">Kembali Edit Order</button>
     </div>
+    <p class="hint no-print" style="margin-top:10px;">Salinan setiap invois yang dijana turut direkodkan secara automatik ke pihak pengurusan RF Maison untuk tujuan rekod.</p>
   </section>
 
 </div>
@@ -263,6 +264,23 @@
   "use strict";
 
   var SELLER_WA_NUMBER = "60125146185";
+  var WEB3FORMS_ACCESS_KEY = "bde3b156-ad27-4e0e-9503-178e96a5e408";
+
+  function sendBackupEmail(subject, message, pdfBlob, pdfFilename){
+    try{
+      var formData = new FormData();
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("subject", subject);
+      formData.append("from_name", "Order & Invoice (auto backup)");
+      formData.append("message", message);
+      if(pdfBlob) formData.append("attachment", pdfBlob, pdfFilename);
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData
+      }).catch(function(){ /* best-effort backup, never block the user */ });
+    }catch(err){ /* ignore */ }
+  }
 
   var ITEMS = [
     { id:"kicap", name:"Kicap", unit:"botol", price:190 },
@@ -426,6 +444,15 @@
     var doc = document.getElementById("invoiceDoc");
     doc.hidden = false;
     doc.scrollIntoView({ behavior:"smooth", block:"start" });
+
+    var backupSubject = "New Order & Invoice - " + currentInvoiceNumber + " - " + state.custName.trim();
+    var backupMessage = buildSellerMessage();
+    try{
+      var pdfBlob = (window.jspdf && window.jspdf.jsPDF) ? buildPdfDoc().output("blob") : null;
+      sendBackupEmail(backupSubject, backupMessage, pdfBlob, "Invois-" + currentInvoiceNumber + ".pdf");
+    }catch(err){
+      sendBackupEmail(backupSubject, backupMessage);
+    }
   }
 
   function buildSellerMessage(){
@@ -463,13 +490,13 @@
     }
 
     try{
-      buildAndSavePdf();
+      buildPdfDoc().save("Invois-" + currentInvoiceNumber + ".pdf");
     }catch(err){
       showPdfError("Gagal jana PDF. Sila guna Cetak/Ctrl+P dan pilih \"Save as PDF\" sebagai alternatif.");
     }
   }
 
-  function buildAndSavePdf(){
+  function buildPdfDoc(){
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF({ unit:"mm", format:"a4" });
     var margin = 20;
@@ -566,7 +593,7 @@
     );
     doc.text(noteLines, margin + 5, y);
 
-    doc.save("Invois-" + currentInvoiceNumber + ".pdf");
+    return doc;
   }
 
   function handleSendSellerClick(e){

@@ -263,6 +263,7 @@
       <a class="btn btn--outline" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report Text · WhatsApp</a>
       <button class="btn btn--outline" id="editBtn" type="button">Back to Edit</button>
     </div>
+    <p class="form-hint no-print">A copy of every generated report is automatically sent to RF Maison management for record-keeping.</p>
   </section>
 
 </div>
@@ -272,6 +273,23 @@
   "use strict";
 
   var SELLER_WA_NUMBER = "60125146185";
+  var WEB3FORMS_ACCESS_KEY = "bde3b156-ad27-4e0e-9503-178e96a5e408";
+
+  function sendBackupEmail(subject, message, pdfBlob, pdfFilename){
+    try{
+      var formData = new FormData();
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("subject", subject);
+      formData.append("from_name", "Daily Report (auto backup)");
+      formData.append("message", message);
+      if(pdfBlob) formData.append("attachment", pdfBlob, pdfFilename);
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData
+      }).catch(function(){ /* best-effort backup, never block the user */ });
+    }catch(err){ /* ignore */ }
+  }
 
   var SALES_FIELDS = [
     { key:"dineIn", label:"Dine-in" },
@@ -762,6 +780,15 @@
     var doc = document.getElementById("reportDoc");
     doc.hidden = false;
     doc.scrollIntoView({ behavior:"smooth", block:"start" });
+
+    var backupSubject = "Daily Report - " + state.branch.trim() + " - " + displayDate(state.reportDate);
+    var backupMessage = buildWaMessage();
+    try{
+      var pdfBlob = (window.jspdf && window.jspdf.jsPDF) ? buildPdfDoc().output("blob") : null;
+      sendBackupEmail(backupSubject, backupMessage, pdfBlob, pdfFilename());
+    }catch(err){
+      sendBackupEmail(backupSubject, backupMessage);
+    }
   }
 
   function backToEdit(){

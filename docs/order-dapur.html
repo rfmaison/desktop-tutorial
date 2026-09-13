@@ -384,6 +384,7 @@
       <a class="btn btn--primary" id="sendBtn" href="#" target="_blank" rel="noopener noreferrer">Hantar Order &middot; WhatsApp</a>
     </div>
     <p class="form-error" id="formError" hidden></p>
+    <p class="hint" style="margin-top:10px;">Salinan setiap order yang dihantar turut direkodkan secara automatik ke pihak pengurusan RF Maison untuk tujuan rekod.</p>
   </section>
 
   <div class="sticky-toolbar">
@@ -405,6 +406,22 @@
   "use strict";
 
   var WA_NUMBER = "60125146185";
+  var WEB3FORMS_ACCESS_KEY = "bde3b156-ad27-4e0e-9503-178e96a5e408";
+
+  function sendBackupEmail(subject, message){
+    try{
+      var formData = new FormData();
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("subject", subject);
+      formData.append("from_name", "Order Stok Dapur (auto backup)");
+      formData.append("message", message);
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData
+      }).catch(function(){ /* best-effort backup, never block the user */ });
+    }catch(err){ /* ignore */ }
+  }
 
   var CATALOG = [
     { key:"protein", label:"Ayam, Daging & Seafood", items:[
@@ -731,6 +748,7 @@
     var message = buildMessage();
     var url = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(message);
     e.currentTarget.setAttribute("href", url);
+    sendBackupEmail("New Kitchen Stock Order - " + (state.shopName.trim() || "-"), message);
   }
 
   function showToast(msg){
