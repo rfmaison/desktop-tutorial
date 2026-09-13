@@ -199,9 +199,16 @@
       <span class="fl-label">Expenses (auto)</span>
       <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingExpenses">0.00</span></div>
     </div>
-    <div class="field-line">
-      <span class="fl-label">Bank-in</span>
-      <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="bankIn" placeholder="0.00"></div>
+    <div class="expense-block">
+      <div class="field-line">
+        <span class="fl-label">Bank-in</span>
+        <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="bankIn" placeholder="0.00"></div>
+      </div>
+      <div class="expense-scan-row">
+        <label class="scan-btn">📷 Attach Bank-in Slip<input type="file" accept="image/*" capture="environment" id="bankInSlipInput" hidden></label>
+        <span class="scan-status" id="bankInScanStatus"></span>
+        <span class="receipt-thumb-slot" id="bankInThumbSlot"></span>
+      </div>
     </div>
     <div class="field-line">
       <span class="fl-label">Refund (auto)</span>
@@ -289,7 +296,7 @@
     sales:{}, payment:{},
     refunds:[{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0}],
     expenses:[{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0}],
-    openingFloat:0, bankIn:0
+    openingFloat:0, bankIn:0, bankInSlip:null
   };
 
   function loadState(){
@@ -550,6 +557,80 @@
       .then(function(){
         scanBtn.classList.remove("is-scanning");
       });
+  }
+
+  function setBankInScanStatus(text, kind){
+    var el = document.getElementById("bankInScanStatus");
+    el.textContent = text;
+    el.className = "scan-status" + (kind ? " is-" + kind : "");
+  }
+
+  function storeBankInSlipImage(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var img = new Image();
+      img.onload = function(){
+        state.bankInSlip = { dataUrl:dataUrl, width:img.naturalWidth, height:img.naturalHeight };
+        saveState();
+        document.getElementById("bankInThumbSlot").innerHTML = receiptThumbHtml({ receiptDataUrl:dataUrl });
+      };
+      img.onerror = function(){
+        setBankInScanStatus("Photo saved for scanning, but couldn't be attached as an image (unsupported format). Try a JPEG/PNG photo instead.", "warn");
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeBankInSlipImage(){
+    state.bankInSlip = null;
+    saveState();
+    document.getElementById("bankInThumbSlot").innerHTML = "";
+  }
+
+  function handleBankInSlipFile(file){
+    if(!file) return;
+    storeBankInSlipImage(file);
+    if(!window.Tesseract){
+      setBankInScanStatus("Receipt scanning is not ready (needs internet connection). Please fill in manually.", "warn");
+      return;
+    }
+    var scanBtn = document.getElementById("bankInSlipInput").closest(".scan-btn");
+    if(scanBtn) scanBtn.classList.add("is-scanning");
+    setBankInScanStatus("Scanning bank-in slip... this may take a few seconds.");
+
+    window.Tesseract.recognize(file, "eng")
+      .then(function(result){
+        var parsed = parseReceiptText(result.data.text || "");
+        var bankInInput = document.getElementById("bankIn");
+        if(parsed.amount !== null){
+          state.bankIn = parsed.amount;
+          bankInInput.value = parsed.amount;
+          saveState();
+          renderTotals();
+          setBankInScanStatus("Detected bank-in amount " + money(parsed.amount) + ". Please verify.", "ok");
+        }else{
+          setBankInScanStatus("Could not read the slip clearly. Please enter the amount manually.", "warn");
+        }
+      })
+      .catch(function(){
+        setBankInScanStatus("Could not scan this photo. Please enter the amount manually.", "warn");
+      })
+      .then(function(){
+        if(scanBtn) scanBtn.classList.remove("is-scanning");
+      });
+  }
+
+  function bindBankInSlip(){
+    document.getElementById("bankInSlipInput").addEventListener("change", function(e){
+      var file = e.target.files && e.target.files[0];
+      handleBankInSlipFile(file);
+      e.target.value = "";
+    });
+    document.getElementById("bankInThumbSlot").addEventListener("click", function(e){
+      if(e.target.closest(".receipt-remove")) removeBankInSlipImage();
+    });
   }
 
   function bindExpenseRows(){
@@ -890,7 +971,12 @@
     doc.text("CLOSING FLOAT", margin, y);
     doc.text(money(closingFloat()), colAmount, y, { align:"right" });
 
-    var receiptsToEmbed = state.expenses.filter(function(r){ return r.receiptDataUrl && r.receiptWidth && r.receiptHeight; });
+    var receiptsToEmbed = state.expenses
+      .filter(function(r){ return r.receiptDataUrl && r.receiptWidth && r.receiptHeight; })
+      .map(function(r){ return { label:(r.item.trim() || "Expense") + " — " + money(num(r.amount)), dataUrl:r.receiptDataUrl, width:r.receiptWidth, height:r.receiptHeight }; });
+    if(state.bankInSlip && state.bankInSlip.width && state.bankInSlip.height){
+      receiptsToEmbed.push({ label:"Bank-in Slip — " + money(num(state.bankIn)), dataUrl:state.bankInSlip.dataUrl, width:state.bankInSlip.width, height:state.bankInSlip.height });
+    }
     if(receiptsToEmbed.length){
       doc.addPage();
       y = margin;
@@ -906,16 +992,16 @@
       var maxW = pageWidth - margin * 2;
       var maxH = 110;
       receiptsToEmbed.forEach(function(r, idx){
-        var aspect = r.receiptHeight / r.receiptWidth;
+        var aspect = r.height / r.width;
         var w = maxW;
         var h = w * aspect;
         if(h > maxH){ h = maxH; w = h / aspect; }
         ensureSpace(h + 14);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9.5);
-        doc.text((idx + 1) + ". " + (r.item.trim() || "Expense") + " — " + money(num(r.amount)), margin, y);
+        doc.text((idx + 1) + ". " + r.label, margin, y);
         y += 4;
-        doc.addImage(r.receiptDataUrl, imageFormatFromDataUrl(r.receiptDataUrl), margin, y, w, h);
+        doc.addImage(r.dataUrl, imageFormatFromDataUrl(r.dataUrl), margin, y, w, h);
         y += h + 10;
       });
     }
@@ -935,6 +1021,7 @@
     bindAmountFields("paymentFields", state.payment);
     bindRefundRows();
     bindExpenseRows();
+    bindBankInSlip();
 
     document.getElementById("reportDate").addEventListener("input", function(e){ state.reportDate = e.target.value; saveState(); });
     document.getElementById("branch").addEventListener("input", function(e){ state.branch = e.target.value; saveState(); });
@@ -978,6 +1065,9 @@
     renderAmountFields("paymentFields", PAYMENT_FIELDS, state.payment);
     renderRefundRows();
     renderExpenseRows();
+    if(state.bankInSlip && state.bankInSlip.dataUrl){
+      document.getElementById("bankInThumbSlot").innerHTML = receiptThumbHtml({ receiptDataUrl:state.bankInSlip.dataUrl });
+    }
     renderTotals();
     bindEvents();
   }
