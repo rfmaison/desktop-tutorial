@@ -244,8 +244,9 @@
 
     <p class="form-error" id="pdfError" hidden></p>
     <div class="action-stack no-print">
+      <button class="btn btn--primary" id="sharePdfBtn" type="button" hidden>Share Report (PDF) via WhatsApp</button>
       <button class="btn btn--outline" id="downloadPdfBtn" type="button">Download Report (PDF)</button>
-      <a class="btn btn--primary" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report · WhatsApp</a>
+      <a class="btn btn--outline" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report Text · WhatsApp</a>
       <button class="btn btn--outline" id="editBtn" type="button">Back to Edit</button>
     </div>
   </section>
@@ -692,6 +693,10 @@
     el.hidden = false;
   }
 
+  function pdfFilename(){
+    return "Daily-Report-" + state.reportDate + "-" + currentReportNumber + ".pdf";
+  }
+
   function downloadReportPdf(){
     var pdfErrorEl = document.getElementById("pdfError");
     pdfErrorEl.hidden = true;
@@ -701,13 +706,38 @@
       return;
     }
     try{
-      buildAndSavePdf();
+      buildPdfDoc().save(pdfFilename());
     }catch(err){
       showPdfError("Could not generate the PDF. Please try again.");
     }
   }
 
-  function buildAndSavePdf(){
+  function shareReportPdf(){
+    var pdfErrorEl = document.getElementById("pdfError");
+    pdfErrorEl.hidden = true;
+    if(!currentReportNumber) return;
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showPdfError("PDF is not ready (internet connection required to load the library). Please try again in a moment.");
+      return;
+    }
+    try{
+      var blob = buildPdfDoc().output("blob");
+      var file = new File([blob], pdfFilename(), { type:"application/pdf" });
+      if(!navigator.canShare || !navigator.canShare({ files:[file] })){
+        showPdfError("Direct file sharing isn't supported on this browser. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+        return;
+      }
+      navigator.share({ files:[file], title:"Daily Report " + currentReportNumber, text:buildWaMessage() })
+        .catch(function(err){
+          if(err && err.name === "AbortError") return;
+          showPdfError("Could not open the share menu. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+        });
+    }catch(err){
+      showPdfError("Could not prepare the PDF for sharing. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+    }
+  }
+
+  function buildPdfDoc(){
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF({ unit:"mm", format:"a4" });
     var margin = 16;
@@ -810,7 +840,7 @@
     doc.text("CLOSING FLOAT", margin, y);
     doc.text(money(closingFloat()), colAmount, y, { align:"right" });
 
-    doc.save("Daily-Report-" + state.reportDate + "-" + currentReportNumber + ".pdf");
+    return doc;
   }
 
   function bindEvents(){
@@ -837,9 +867,14 @@
     });
 
     document.getElementById("genReportBtn").addEventListener("click", generateReport);
+    document.getElementById("sharePdfBtn").addEventListener("click", shareReportPdf);
     document.getElementById("downloadPdfBtn").addEventListener("click", downloadReportPdf);
     document.getElementById("sendWaBtn").addEventListener("click", handleSendWaClick);
     document.getElementById("editBtn").addEventListener("click", backToEdit);
+
+    if(navigator.canShare){
+      document.getElementById("sharePdfBtn").hidden = false;
+    }
   }
 
   function init(){
