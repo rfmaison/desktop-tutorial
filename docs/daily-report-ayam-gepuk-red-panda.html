@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ayam Gepuk Red Panda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+<style>
+  :root{
+    --ink:#241f1a; --ink-soft:#6a604f; --paper:#ece3d0; --card:#fbf8f1; --card-alt:#f3ecdb;
+    --line:#ddd0ac; --line-soft:#e6dcc3; --green:#1e7a4c; --green-dark:#145c38; --green-tint:#e2ecdf;
+    --spice:#bb5119; --spice-tint:#f2ddc4; --danger:#a83226; --shadow: 0 1px 0 rgba(36,31,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+      --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+      --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#f1e9d8; --ink-soft:#bdaf95; --paper:#181310; --card:#241d17; --card-alt:#2b231b;
+    --line:#3c3123; --line-soft:#33291e; --green:#48b47e; --green-dark:#2e8c5e; --green-tint:#1c2a20;
+    --spice:#e5813e; --spice-tint:#3a2717; --danger:#e2685f; --shadow: 0 1px 0 rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  .page{ max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+
+  .ticket-header{ text-align:center; padding:22px 16px 20px; background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); }
+  .ticket-header__mark{ font-size:28px; line-height:1; margin-bottom:6px; }
+  .brand{ font-family:'Fraunces', Georgia, serif; font-weight:600; font-size:clamp(26px,6vw,34px); margin:0; text-wrap:balance; }
+  .tagline{ margin:6px 0 0; color:var(--ink-soft); font-size:14px; letter-spacing:.03em; text-transform:uppercase; }
+
+  .panel{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 18px 20px; margin-top:16px; box-shadow:var(--shadow); }
+  .panel-title{ font-family:'Fraunces', Georgia, serif; font-size:17px; font-weight:600; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .panel-title:not(:first-child){ margin-top:22px; }
+
+  .field-row{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .field-row label{ font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .field-row input[type="text"], .field-row input[type="date"]{
+    font:inherit; font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    background:var(--paper); color:var(--ink);
+  }
+  .field-row input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px){ .grid-2{ grid-template-columns:1fr; } }
+
+  .field-line{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-soft); }
+  .field-line:last-of-type{ border-bottom:none; }
+  .field-line .fl-label{ font-size:14.5px; }
+  .fl-amount{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
+  .fl-amount span{ font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; }
+  .fl-amount input{
+    width:110px; text-align:right; font-family:'IBM Plex Mono', monospace; font-size:14.5px;
+    padding:7px 8px; border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--ink);
+  }
+  .fl-amount input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+
+  .row-line{ display:flex; align-items:center; gap:8px; padding:6px 0; }
+  .row-line input[type="text"]{
+    flex:1; min-width:0; font:inherit; font-size:14.5px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--ink);
+  }
+  .row-line input[type="text"]:focus, .row-line .fl-amount input:focus{ outline:2px solid var(--green); outline-offset:1px; }
+  .row-remove{
+    width:28px; height:28px; border-radius:7px; border:1px solid var(--line); background:var(--card);
+    color:var(--danger); font-size:16px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  }
+  .add-row-btn{
+    margin-top:8px; font-size:13px; font-weight:600; color:var(--green-dark);
+    background:transparent; border:1px dashed var(--line); border-radius:7px; padding:7px 12px; cursor:pointer;
+  }
+
+  .expense-block{ padding:10px 0; border-bottom:1px solid var(--line-soft); }
+  .expense-block:last-of-type{ border-bottom:none; }
+  .expense-block .row-line{ padding:0 0 8px; }
+  .expense-scan-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .scan-btn{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600;
+    color:var(--green-dark); background:var(--green-tint); border:1px solid var(--line); border-radius:999px;
+    padding:6px 12px; cursor:pointer;
+  }
+  .scan-btn.is-scanning{ opacity:.6; pointer-events:none; }
+  .scan-status{ font-size:12.5px; color:var(--ink-soft); }
+  .scan-status.is-ok{ color:var(--green-dark); }
+  .scan-status.is-warn{ color:var(--spice); }
+  .receipt-thumb{ position:relative; display:inline-flex; }
+  .receipt-thumb img{ width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--line); display:block; }
+  .receipt-remove{
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
+    border:1px solid var(--line); background:var(--card); color:var(--danger); font-size:11px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+
+  .totals-box{ border-top:1px dashed var(--line); margin-top:6px; padding-top:10px; }
+  .totals-row{ display:flex; justify-content:space-between; font-size:15px; font-weight:600; padding:2px 0; }
+  .totals-row .t-amount{ font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; color:var(--green-dark); }
+
+  .btn{
+    font:inherit; font-weight:600; font-size:14.5px; border-radius:8px; padding:12px 16px; border:1px solid transparent;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; width:100%;
+  }
+  .btn--primary{ background:var(--green); color:#fff; }
+  .btn--primary:hover{ background:var(--green-dark); }
+  .btn--outline{ background:transparent; border-color:var(--line); color:var(--ink); }
+  .action-stack{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .form-error{ color:var(--danger); font-size:13.5px; margin:10px 0 0; }
+  .form-hint{ color:var(--ink-soft); font-size:12.5px; margin:8px 0 0; }
+
+  .report-doc{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:24px; margin-top:16px; }
+  .report-top{ display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:14px; }
+  .report-title{ font-family:'Fraunces', Georgia, serif; font-size:20px; font-weight:600; }
+  .report-meta{ text-align:right; font-size:13px; color:var(--ink-soft); }
+  .report-meta strong{ color:var(--ink); font-family:'IBM Plex Mono', monospace; display:block; font-size:14.5px; }
+  .report-info{ margin-top:14px; font-size:14px; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; }
+  .report-info .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); }
+  .report-section-title{ font-family:'Fraunces', Georgia, serif; font-size:15.5px; font-weight:600; margin:20px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--line); }
+  table.report-table{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.report-table td{ padding:5px 4px; border-bottom:1px solid var(--line-soft); }
+  table.report-table td.num{ text-align:right; font-family:'IBM Plex Mono', monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  table.report-table tr.total-row td{ font-weight:700; border-top:1.5px solid var(--ink); border-bottom:none; }
+  .closing-highlight{ margin-top:10px; background:var(--green-tint); border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:baseline; }
+  .closing-highlight .label{ font-family:'Fraunces', Georgia, serif; font-size:16px; font-weight:600; }
+  .closing-highlight .amount{ font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:600; }
+
+  .no-print{ }
+  @media print{
+    body{ background:#fff; }
+    .ticket-header, .panel, .action-stack{ display:none !important; }
+    .page{ padding:0; max-width:none; }
+    .report-doc{ border:none; box-shadow:none; margin:0; }
+    .no-print{ display:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="ticket-header">
+    <div class="ticket-header__mark">📋</div>
+    <h1 class="brand">Ayam Gepuk Red Panda</h1>
+    <p class="tagline">Daily Sales Report &amp; Cashier Closing</p>
+  </header>
+
+  <section class="panel" id="formPanel">
+    <h2 class="panel-title">General Information</h2>
+    <div class="grid-2">
+      <div class="field-row">
+        <label for="reportDate">Date</label>
+        <input id="reportDate" type="date">
+      </div>
+      <div class="field-row">
+        <label for="branch">Branch / Outlet</label>
+        <input id="branch" type="text" placeholder="e.g. Ayam Gepuk - Branch A" autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row">
+      <label for="preparedBy">Prepared By</label>
+      <input id="preparedBy" type="text" placeholder="Manager / cashier name" autocomplete="off">
+    </div>
+
+    <h2 class="panel-title">1. Sales Summary</h2>
+    <div id="salesFields"></div>
+    <div class="totals-box"><div class="totals-row"><span>Total Sales Outlet</span><span class="t-amount" id="totalSalesOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">2. Payment Breakdown</h2>
+    <div id="paymentFields"></div>
+    <div class="totals-box"><div class="totals-row"><span>Total</span><span class="t-amount" id="totalPaymentOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">3. Refunds / Discounts</h2>
+    <div id="refundRows"></div>
+    <button class="add-row-btn" id="addRefundBtn" type="button">+ Add Refund Row</button>
+    <div class="totals-box"><div class="totals-row"><span>Total Refund</span><span class="t-amount" id="totalRefundOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">4. Daily Expenses</h2>
+    <div id="expenseRows"></div>
+    <button class="add-row-btn" id="addExpenseBtn" type="button">+ Add Expense Row</button>
+    <p class="form-hint">Tip: tap "Scan Receipt" to auto-fill the item and amount from a photo, then verify before saving. The photo itself is kept and attached as a page at the end of the generated PDF report. Photos are processed on this device only and are never uploaded anywhere.</p>
+    <div class="totals-box"><div class="totals-row"><span>Total Expenses</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
+
+    <h2 class="panel-title">5. Cashier Closing</h2>
+    <div class="field-line">
+      <span class="fl-label">Opening Float</span>
+      <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="openingFloat" placeholder="0.00"></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Cash Sales (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingCashSales">0.00</span></div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Expenses (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingExpenses">0.00</span></div>
+    </div>
+    <div class="expense-block">
+      <div class="field-line">
+        <span class="fl-label">Bank-in</span>
+        <div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" id="bankIn" placeholder="0.00"></div>
+      </div>
+      <div class="expense-scan-row">
+        <label class="scan-btn">📷 Attach Bank-in Slip<input type="file" accept="image/*" capture="environment" id="bankInSlipInput" hidden></label>
+        <span class="scan-status" id="bankInScanStatus"></span>
+        <span class="receipt-thumb-slot" id="bankInThumbSlot"></span>
+      </div>
+    </div>
+    <div class="field-line">
+      <span class="fl-label">Refund (auto)</span>
+      <div class="fl-amount"><span>RM</span><span class="t-amount" id="closingRefund">0.00</span></div>
+    </div>
+    <div class="totals-box"><div class="totals-row"><span>Closing Float</span><span class="t-amount" id="closingFloatOut">RM 0.00</span></div></div>
+
+    <p class="form-error" id="formError" hidden></p>
+    <div class="action-stack">
+      <button class="btn btn--primary" id="genReportBtn" type="button">Generate Report</button>
+    </div>
+  </section>
+
+  <section class="report-doc" id="reportDoc" hidden>
+    <div class="report-top">
+      <div class="report-title">Daily Report</div>
+      <div class="report-meta">
+        Reference No. <strong id="repNumber">—</strong>
+        Generated <strong id="repGeneratedAt">—</strong>
+      </div>
+    </div>
+
+    <div class="report-info">
+      <div><div class="label">Date</div><div id="repDate">—</div></div>
+      <div><div class="label">Branch / Outlet</div><div id="repBranch">—</div></div>
+      <div><div class="label">Prepared By</div><div id="repPreparedBy">—</div></div>
+    </div>
+
+    <div class="report-section-title">1. Sales Summary</div>
+    <table class="report-table" id="repSalesTable"></table>
+
+    <div class="report-section-title">2. Payment Breakdown</div>
+    <table class="report-table" id="repPaymentTable"></table>
+
+    <div class="report-section-title">3. Refunds / Discounts</div>
+    <table class="report-table" id="repRefundTable"></table>
+
+    <div class="report-section-title">4. Daily Expenses</div>
+    <table class="report-table" id="repExpenseTable"></table>
+
+    <div class="report-section-title">5. Cashier Closing</div>
+    <table class="report-table" id="repClosingTable"></table>
+    <div class="closing-highlight">
+      <span class="label">Closing Float</span>
+      <span class="amount" id="repClosingFloat">RM 0.00</span>
+    </div>
+
+    <p class="form-error" id="pdfError" hidden></p>
+    <div class="action-stack no-print">
+      <button class="btn btn--primary" id="sharePdfBtn" type="button" hidden>Share Report (PDF) via WhatsApp</button>
+      <button class="btn btn--outline" id="downloadPdfBtn" type="button">Download Report (PDF)</button>
+      <a class="btn btn--outline" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report Text · WhatsApp</a>
+      <button class="btn btn--outline" id="editBtn" type="button">Back to Edit</button>
+    </div>
+    <p class="form-hint no-print">A copy of every generated report is automatically sent to management for record-keeping.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SELLER_WA_NUMBER = "60125146185";
+  var WEB3FORMS_ACCESS_KEY = "bde3b156-ad27-4e0e-9503-178e96a5e408";
+
+  function sendBackupEmail(subject, message, pdfBlob, pdfFilename){
+    try{
+      var formData = new FormData();
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("subject", subject);
+      formData.append("from_name", "Daily Report (auto backup)");
+      formData.append("message", message);
+      if(pdfBlob) formData.append("attachment", pdfBlob, pdfFilename);
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData
+      }).catch(function(){ /* best-effort backup, never block the user */ });
+    }catch(err){ /* ignore */ }
+  }
+
+  var SALES_FIELDS = [
+    { key:"dineIn", label:"Dine-in" },
+    { key:"grab", label:"Delivery – GrabFood" },
+    { key:"foodpanda", label:"Delivery – Foodpanda" },
+    { key:"shopeefood", label:"Delivery – ShopeeFood" },
+    { key:"sellIngredient", label:"Sell Ingredient" },
+    { key:"event", label:"Event" },
+    { key:"catering", label:"Catering / Bulk Orders" }
+  ];
+
+  var PAYMENT_FIELDS = [
+    { key:"cash", label:"Cash Sale" },
+    { key:"qr", label:"QR Sale" },
+    { key:"card", label:"Card Sale" },
+    { key:"others", label:"Others" }
+  ];
+
+  var STORAGE_KEY = "daily_report_draft_v2_en_agrp";
+  var state = {
+    reportDate:"", branch:"", preparedBy:"",
+    sales:{}, payment:{},
+    refunds:[{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0},{orderId:"",amount:0}],
+    expenses:[{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0},{item:"",amount:0}],
+    openingFloat:0, bankIn:0, bankInSlip:null
+  };
+
+  function loadState(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      var saved = JSON.parse(raw);
+      if(saved && typeof saved === "object"){
+        Object.keys(state).forEach(function(k){ if(saved[k] !== undefined) state[k] = saved[k]; });
+      }
+    }catch(e){ /* storage unavailable */ }
+  }
+  function saveState(){
+    try{ window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* ignore */ }
+  }
+
+  function money(n){
+    n = isNaN(n) ? 0 : n;
+    return "RM " + n.toLocaleString("en-MY", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  }
+  function num(v){
+    var n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function todayISO(){
+    return new Intl.DateTimeFormat("en-CA", { timeZone:"Asia/Kuala_Lumpur" }).format(new Date());
+  }
+  function displayDate(iso){
+    if(!iso) return "-";
+    var parts = iso.split("-");
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function renderAmountFields(containerId, fields, dataObj){
+    var html = "";
+    fields.forEach(function(f){
+      html += ''
+        + '<div class="field-line" data-key="' + f.key + '">'
+        +   '<span class="fl-label">' + f.label + '</span>'
+        +   '<div class="fl-amount"><span>RM</span><input type="number" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (dataObj[f.key] ? dataObj[f.key] : "") + '"></div>'
+        + '</div>';
+    });
+    document.getElementById(containerId).innerHTML = html;
+  }
+
+  function renderRefundRows(){
+    var html = "";
+    state.refunds.forEach(function(r, i){
+      html += ''
+        + '<div class="row-line" data-index="' + i + '">'
+        +   '<input type="text" class="rr-orderid" placeholder="Order ID" value="' + (r.orderId || "") + '">'
+        +   '<div class="fl-amount"><span>RM</span><input type="number" class="rr-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
+        +   '<button class="row-remove" type="button" aria-label="Remove row">×</button>'
+        + '</div>';
+    });
+    document.getElementById("refundRows").innerHTML = html;
+  }
+
+  function receiptThumbHtml(entry){
+    if(!entry.receiptDataUrl) return "";
+    return '<span class="receipt-thumb"><img src="' + entry.receiptDataUrl + '" alt="Receipt photo"><button type="button" class="receipt-remove" aria-label="Remove receipt photo">×</button></span>';
+  }
+
+  function renderExpenseRows(){
+    var html = "";
+    state.expenses.forEach(function(r, i){
+      html += ''
+        + '<div class="expense-block" data-index="' + i + '">'
+        +   '<div class="row-line">'
+        +     '<input type="text" class="ex-item" placeholder="Expense item / vendor" value="' + (r.item || "") + '">'
+        +     '<div class="fl-amount"><span>RM</span><input type="number" class="ex-amount" inputmode="decimal" step="0.01" placeholder="0.00" value="' + (r.amount ? r.amount : "") + '"></div>'
+        +     '<button class="row-remove" type="button" aria-label="Remove row">×</button>'
+        +   '</div>'
+        +   '<div class="expense-scan-row">'
+        +     '<label class="scan-btn">📷 Scan Receipt<input type="file" accept="image/*" capture="environment" class="ex-receipt-input" hidden></label>'
+        +     '<span class="scan-status"></span>'
+        +     '<span class="receipt-thumb-slot">' + receiptThumbHtml(r) + '</span>'
+        +   '</div>'
+        + '</div>';
+    });
+    document.getElementById("expenseRows").innerHTML = html;
+  }
+
+  function totalSales(){
+    var t = 0;
+    SALES_FIELDS.forEach(function(f){ t += num(state.sales[f.key]); });
+    return t;
+  }
+  function totalPayment(){
+    var t = 0;
+    PAYMENT_FIELDS.forEach(function(f){ t += num(state.payment[f.key]); });
+    return t;
+  }
+  function totalRefund(){
+    var t = 0;
+    state.refunds.forEach(function(r){ t += num(r.amount); });
+    return t;
+  }
+  function totalExpenses(){
+    var t = 0;
+    state.expenses.forEach(function(r){ t += num(r.amount); });
+    return t;
+  }
+  function closingFloat(){
+    return num(state.openingFloat) + num(state.payment.cash) - totalExpenses() - num(state.bankIn) - totalRefund();
+  }
+
+  function renderTotals(){
+    document.getElementById("totalSalesOut").textContent = money(totalSales());
+    document.getElementById("totalPaymentOut").textContent = money(totalPayment());
+    document.getElementById("totalRefundOut").textContent = money(totalRefund());
+    document.getElementById("totalExpenseOut").textContent = money(totalExpenses());
+    document.getElementById("closingCashSales").textContent = money(num(state.payment.cash)).replace("RM ", "");
+    document.getElementById("closingExpenses").textContent = money(totalExpenses()).replace("RM ", "");
+    document.getElementById("closingRefund").textContent = money(totalRefund()).replace("RM ", "");
+    document.getElementById("closingFloatOut").textContent = money(closingFloat());
+  }
+
+  function bindAmountFields(containerId, dataObj){
+    document.getElementById(containerId).addEventListener("input", function(e){
+      var line = e.target.closest(".field-line");
+      if(!line) return;
+      dataObj[line.getAttribute("data-key")] = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function bindRefundRows(){
+    var el = document.getElementById("refundRows");
+    el.addEventListener("input", function(e){
+      var row = e.target.closest(".row-line");
+      if(!row) return;
+      var i = parseInt(row.getAttribute("data-index"), 10);
+      if(e.target.classList.contains("rr-orderid")) state.refunds[i].orderId = e.target.value;
+      if(e.target.classList.contains("rr-amount")) state.refunds[i].amount = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+    el.addEventListener("click", function(e){
+      var btn = e.target.closest(".row-remove");
+      if(!btn) return;
+      var row = btn.closest(".row-line");
+      var i = parseInt(row.getAttribute("data-index"), 10);
+      state.refunds.splice(i, 1);
+      renderRefundRows();
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function setScanStatus(index, text, kind){
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    if(!block) return;
+    var statusEl = block.querySelector(".scan-status");
+    statusEl.textContent = text;
+    statusEl.className = "scan-status" + (kind ? " is-" + kind : "");
+  }
+
+  function normalizeAmount(raw){
+    var s = raw.replace(/\s/g, "");
+    if(s.indexOf(",") !== -1 && s.indexOf(".") !== -1){
+      s = s.replace(/,/g, "");
+    }else if(s.indexOf(",") !== -1){
+      s = /,\d{2}$/.test(s) ? s.replace(",", ".") : s.replace(/,/g, "");
+    }
+    return parseFloat(s);
+  }
+
+  function parseReceiptText(text){
+    var rawLines = text.split(/\r?\n/).map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 0; });
+
+    var vendor = "";
+    for(var i = 0; i < Math.min(rawLines.length, 6); i++){
+      if(/[A-Za-z]{3,}/.test(rawLines[i])){ vendor = rawLines[i]; break; }
+    }
+
+    var amount = null;
+    var totalLineRegex = /(grand\s*total|total|jumlah|amount\s*due)[^0-9]{0,15}(\d{1,3}(?:[,.]\d{3})*[.,]\d{2})/i;
+    for(var j = rawLines.length - 1; j >= 0; j--){
+      var m = rawLines[j].match(totalLineRegex);
+      if(m){ amount = normalizeAmount(m[2]); break; }
+    }
+    if(amount === null){
+      var allNums = text.match(/\d{1,3}(?:[,.]\d{3})*[.,]\d{2}/g) || [];
+      var parsed = allNums.map(normalizeAmount).filter(function(n){ return !isNaN(n); });
+      if(parsed.length) amount = Math.max.apply(null, parsed);
+    }
+
+    return { vendor:vendor, amount:amount };
+  }
+
+  function storeReceiptImage(index, file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var img = new Image();
+      img.onload = function(){
+        state.expenses[index].receiptDataUrl = dataUrl;
+        state.expenses[index].receiptWidth = img.naturalWidth;
+        state.expenses[index].receiptHeight = img.naturalHeight;
+        saveState();
+        var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+        if(block) block.querySelector(".receipt-thumb-slot").innerHTML = receiptThumbHtml(state.expenses[index]);
+      };
+      img.onerror = function(){
+        setScanStatus(index, "Photo saved for scanning, but couldn't be attached as an image (unsupported format). Try a JPEG/PNG photo instead.", "warn");
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeReceiptImage(index){
+    delete state.expenses[index].receiptDataUrl;
+    delete state.expenses[index].receiptWidth;
+    delete state.expenses[index].receiptHeight;
+    saveState();
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    if(block) block.querySelector(".receipt-thumb-slot").innerHTML = "";
+  }
+
+  function handleReceiptFile(index, file){
+    if(!file) return;
+    storeReceiptImage(index, file);
+    if(!window.Tesseract){
+      setScanStatus(index, "Receipt scanning is not ready (needs internet connection). Please fill in manually.", "warn");
+      return;
+    }
+    var block = document.querySelector('.expense-block[data-index="' + index + '"]');
+    var scanBtn = block.querySelector(".scan-btn");
+    scanBtn.classList.add("is-scanning");
+    setScanStatus(index, "Scanning receipt... this may take a few seconds.");
+
+    window.Tesseract.recognize(file, "eng")
+      .then(function(result){
+        var parsed = parseReceiptText(result.data.text || "");
+        var itemInput = block.querySelector(".ex-item");
+        var amountInput = block.querySelector(".ex-amount");
+
+        if(parsed.vendor){ state.expenses[index].item = parsed.vendor; itemInput.value = parsed.vendor; }
+        if(parsed.amount !== null){ state.expenses[index].amount = parsed.amount; amountInput.value = parsed.amount; }
+        saveState();
+        renderTotals();
+
+        if(parsed.vendor && parsed.amount !== null){
+          setScanStatus(index, "Detected: " + parsed.vendor + " — " + money(parsed.amount) + ". Please verify.", "ok");
+        }else if(parsed.amount !== null){
+          setScanStatus(index, "Detected amount " + money(parsed.amount) + ". Please fill in the vendor name.", "warn");
+        }else{
+          setScanStatus(index, "Could not read the receipt clearly. Please enter the details manually.", "warn");
+        }
+      })
+      .catch(function(){
+        setScanStatus(index, "Could not scan this photo. Please enter the details manually.", "warn");
+      })
+      .then(function(){
+        scanBtn.classList.remove("is-scanning");
+      });
+  }
+
+  function setBankInScanStatus(text, kind){
+    var el = document.getElementById("bankInScanStatus");
+    el.textContent = text;
+    el.className = "scan-status" + (kind ? " is-" + kind : "");
+  }
+
+  function storeBankInSlipImage(file){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var dataUrl = reader.result;
+      var img = new Image();
+      img.onload = function(){
+        state.bankInSlip = { dataUrl:dataUrl, width:img.naturalWidth, height:img.naturalHeight };
+        saveState();
+        document.getElementById("bankInThumbSlot").innerHTML = receiptThumbHtml({ receiptDataUrl:dataUrl });
+      };
+      img.onerror = function(){
+        setBankInScanStatus("Photo saved for scanning, but couldn't be attached as an image (unsupported format). Try a JPEG/PNG photo instead.", "warn");
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeBankInSlipImage(){
+    state.bankInSlip = null;
+    saveState();
+    document.getElementById("bankInThumbSlot").innerHTML = "";
+  }
+
+  function handleBankInSlipFile(file){
+    if(!file) return;
+    storeBankInSlipImage(file);
+    if(!window.Tesseract){
+      setBankInScanStatus("Receipt scanning is not ready (needs internet connection). Please fill in manually.", "warn");
+      return;
+    }
+    var scanBtn = document.getElementById("bankInSlipInput").closest(".scan-btn");
+    if(scanBtn) scanBtn.classList.add("is-scanning");
+    setBankInScanStatus("Scanning bank-in slip... this may take a few seconds.");
+
+    window.Tesseract.recognize(file, "eng")
+      .then(function(result){
+        var parsed = parseReceiptText(result.data.text || "");
+        var bankInInput = document.getElementById("bankIn");
+        if(parsed.amount !== null){
+          state.bankIn = parsed.amount;
+          bankInInput.value = parsed.amount;
+          saveState();
+          renderTotals();
+          setBankInScanStatus("Detected bank-in amount " + money(parsed.amount) + ". Please verify.", "ok");
+        }else{
+          setBankInScanStatus("Could not read the slip clearly. Please enter the amount manually.", "warn");
+        }
+      })
+      .catch(function(){
+        setBankInScanStatus("Could not scan this photo. Please enter the amount manually.", "warn");
+      })
+      .then(function(){
+        if(scanBtn) scanBtn.classList.remove("is-scanning");
+      });
+  }
+
+  function bindBankInSlip(){
+    document.getElementById("bankInSlipInput").addEventListener("change", function(e){
+      var file = e.target.files && e.target.files[0];
+      handleBankInSlipFile(file);
+      e.target.value = "";
+    });
+    document.getElementById("bankInThumbSlot").addEventListener("click", function(e){
+      if(e.target.closest(".receipt-remove")) removeBankInSlipImage();
+    });
+  }
+
+  function bindExpenseRows(){
+    var el = document.getElementById("expenseRows");
+    el.addEventListener("input", function(e){
+      var block = e.target.closest(".expense-block");
+      if(!block) return;
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      if(e.target.classList.contains("ex-item")) state.expenses[i].item = e.target.value;
+      if(e.target.classList.contains("ex-amount")) state.expenses[i].amount = num(e.target.value);
+      saveState();
+      renderTotals();
+    });
+    el.addEventListener("change", function(e){
+      if(!e.target.classList.contains("ex-receipt-input")) return;
+      var block = e.target.closest(".expense-block");
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      var file = e.target.files && e.target.files[0];
+      handleReceiptFile(i, file);
+      e.target.value = "";
+    });
+    el.addEventListener("click", function(e){
+      var removeBtn = e.target.closest(".receipt-remove");
+      if(removeBtn){
+        var receiptBlock = removeBtn.closest(".expense-block");
+        removeReceiptImage(parseInt(receiptBlock.getAttribute("data-index"), 10));
+        return;
+      }
+      var btn = e.target.closest(".row-remove");
+      if(!btn) return;
+      var block = btn.closest(".expense-block");
+      var i = parseInt(block.getAttribute("data-index"), 10);
+      state.expenses.splice(i, 1);
+      renderExpenseRows();
+      saveState();
+      renderTotals();
+    });
+  }
+
+  function showError(msg){
+    var el = document.getElementById("formError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+  function clearError(){ document.getElementById("formError").hidden = true; }
+
+  function validate(){
+    clearError();
+    if(!state.reportDate){
+      showError("Please select the report date.");
+      document.getElementById("reportDate").focus();
+      return false;
+    }
+    if(!state.branch.trim()){
+      showError("Please enter the branch/outlet name.");
+      document.getElementById("branch").focus();
+      return false;
+    }
+    if(!state.preparedBy.trim()){
+      showError("Please enter the prepared by name.");
+      document.getElementById("preparedBy").focus();
+      return false;
+    }
+    return true;
+  }
+
+  var currentReportNumber = null;
+
+  function refNumber(){
+    return "DR-" + String(Math.floor(10000 + Math.random() * 90000));
+  }
+
+  function nowKL(){
+    var fmt = new Intl.DateTimeFormat("en-GB", {
+      timeZone:"Asia/Kuala_Lumpur", day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false
+    });
+    return fmt.format(new Date());
+  }
+
+  function buildRepTable(id, rows){
+    var html = "";
+    rows.forEach(function(r){
+      html += '<tr class="' + (r.total ? "total-row" : "") + '"><td>' + r.label + '</td><td class="num">' + money(r.amount) + '</td></tr>';
+    });
+    document.getElementById(id).innerHTML = html;
+  }
+
+  function generateReport(){
+    if(!validate()) return;
+    currentReportNumber = refNumber();
+
+    document.getElementById("repNumber").textContent = currentReportNumber;
+    document.getElementById("repGeneratedAt").textContent = nowKL();
+    document.getElementById("repDate").textContent = displayDate(state.reportDate);
+    document.getElementById("repBranch").textContent = state.branch.trim();
+    document.getElementById("repPreparedBy").textContent = state.preparedBy.trim();
+
+    var salesRows = SALES_FIELDS.map(function(f){ return { label:f.label, amount:num(state.sales[f.key]) }; });
+    salesRows.push({ label:"TOTAL SALES OUTLET", amount:totalSales(), total:true });
+    buildRepTable("repSalesTable", salesRows);
+
+    var paymentRows = PAYMENT_FIELDS.map(function(f){ return { label:f.label, amount:num(state.payment[f.key]) }; });
+    paymentRows.push({ label:"TOTAL", amount:totalPayment(), total:true });
+    buildRepTable("repPaymentTable", paymentRows);
+
+    var refundRows = state.refunds.filter(function(r){ return r.orderId.trim() || num(r.amount) > 0; })
+      .map(function(r){ return { label:r.orderId.trim() || "-", amount:num(r.amount) }; });
+    if(refundRows.length === 0) refundRows.push({ label:"No refunds", amount:0 });
+    refundRows.push({ label:"Total Refund", amount:totalRefund(), total:true });
+    buildRepTable("repRefundTable", refundRows);
+
+    var expenseRows = state.expenses.filter(function(r){ return r.item.trim() || num(r.amount) > 0; })
+      .map(function(r){ return { label:r.item.trim() || "-", amount:num(r.amount) }; });
+    if(expenseRows.length === 0) expenseRows.push({ label:"No expenses", amount:0 });
+    expenseRows.push({ label:"Total Expenses", amount:totalExpenses(), total:true });
+    buildRepTable("repExpenseTable", expenseRows);
+
+    buildRepTable("repClosingTable", [
+      { label:"Opening Float", amount:num(state.openingFloat) },
+      { label:"Cash Sales", amount:num(state.payment.cash) },
+      { label:"Expenses", amount:totalExpenses() },
+      { label:"Bank-in", amount:num(state.bankIn) },
+      { label:"Refund", amount:totalRefund() }
+    ]);
+    document.getElementById("repClosingFloat").textContent = money(closingFloat());
+
+    document.getElementById("pdfError").hidden = true;
+    document.getElementById("formPanel").hidden = true;
+    var doc = document.getElementById("reportDoc");
+    doc.hidden = false;
+    doc.scrollIntoView({ behavior:"smooth", block:"start" });
+
+    var backupSubject = "Daily Report - " + state.branch.trim() + " - " + displayDate(state.reportDate);
+    var backupMessage = buildWaMessage();
+    try{
+      var pdfBlob = (window.jspdf && window.jspdf.jsPDF) ? buildPdfDoc().output("blob") : null;
+      sendBackupEmail(backupSubject, backupMessage, pdfBlob, pdfFilename());
+    }catch(err){
+      sendBackupEmail(backupSubject, backupMessage);
+    }
+  }
+
+  function backToEdit(){
+    document.getElementById("reportDoc").hidden = true;
+    document.getElementById("formPanel").hidden = false;
+    document.getElementById("formPanel").scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
+  function buildWaMessage(){
+    var lines = [];
+    lines.push("*DAILY SALES REPORT*");
+    lines.push("Reference No.: " + currentReportNumber);
+    lines.push("Date: " + displayDate(state.reportDate));
+    lines.push("Branch/Outlet: " + state.branch.trim());
+    lines.push("Prepared by: " + state.preparedBy.trim());
+    lines.push("");
+    lines.push("*1. Sales Summary*");
+    SALES_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.sales[f.key]))); });
+    lines.push("Total Sales Outlet: " + money(totalSales()));
+    lines.push("");
+    lines.push("*2. Payment Breakdown*");
+    PAYMENT_FIELDS.forEach(function(f){ lines.push("- " + f.label + ": " + money(num(state.payment[f.key]))); });
+    lines.push("Total: " + money(totalPayment()));
+    lines.push("");
+    lines.push("*3. Refunds/Discounts*");
+    var hasRefund = false;
+    state.refunds.forEach(function(r){
+      if(r.orderId.trim() || num(r.amount) > 0){ lines.push("- " + (r.orderId.trim() || "-") + ": " + money(num(r.amount))); hasRefund = true; }
+    });
+    if(!hasRefund) lines.push("- None");
+    lines.push("Total Refund: " + money(totalRefund()));
+    lines.push("");
+    lines.push("*4. Daily Expenses*");
+    var hasExpense = false;
+    state.expenses.forEach(function(r){
+      if(r.item.trim() || num(r.amount) > 0){ lines.push("- " + (r.item.trim() || "-") + ": " + money(num(r.amount))); hasExpense = true; }
+    });
+    if(!hasExpense) lines.push("- None");
+    lines.push("Total Expenses: " + money(totalExpenses()));
+    lines.push("");
+    lines.push("*5. Cashier Closing*");
+    lines.push("Opening Float: " + money(num(state.openingFloat)));
+    lines.push("Cash Sales: " + money(num(state.payment.cash)));
+    lines.push("Expenses: " + money(totalExpenses()));
+    lines.push("Bank-in: " + money(num(state.bankIn)));
+    lines.push("Refund: " + money(totalRefund()));
+    lines.push("Closing Float: " + money(closingFloat()));
+    return lines.join("\n");
+  }
+
+  function handleSendWaClick(e){
+    if(!currentReportNumber){ e.preventDefault(); return; }
+    var url = "https://wa.me/" + SELLER_WA_NUMBER + "?text=" + encodeURIComponent(buildWaMessage());
+    e.currentTarget.setAttribute("href", url);
+  }
+
+  function showPdfError(msg){
+    var el = document.getElementById("pdfError");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function pdfFilename(){
+    return "Daily-Report-" + state.reportDate + "-" + currentReportNumber + ".pdf";
+  }
+
+  function downloadReportPdf(){
+    var pdfErrorEl = document.getElementById("pdfError");
+    pdfErrorEl.hidden = true;
+    if(!currentReportNumber) return;
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showPdfError("PDF is not ready (internet connection required to load the library). Please try again in a moment.");
+      return;
+    }
+    try{
+      buildPdfDoc().save(pdfFilename());
+    }catch(err){
+      showPdfError("Could not generate the PDF. Please try again.");
+    }
+  }
+
+  function shareReportPdf(){
+    var pdfErrorEl = document.getElementById("pdfError");
+    pdfErrorEl.hidden = true;
+    if(!currentReportNumber) return;
+    if(!window.jspdf || !window.jspdf.jsPDF){
+      showPdfError("PDF is not ready (internet connection required to load the library). Please try again in a moment.");
+      return;
+    }
+    try{
+      var blob = buildPdfDoc().output("blob");
+      var file = new File([blob], pdfFilename(), { type:"application/pdf" });
+      if(!navigator.canShare || !navigator.canShare({ files:[file] })){
+        showPdfError("Direct file sharing isn't supported on this browser. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+        return;
+      }
+      navigator.share({ files:[file], title:"Daily Report " + currentReportNumber, text:buildWaMessage() })
+        .catch(function(err){
+          if(err && err.name === "AbortError") return;
+          showPdfError("Could not open the share menu. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+        });
+    }catch(err){
+      showPdfError("Could not prepare the PDF for sharing. Please use \"Download Report (PDF)\" then attach it manually in WhatsApp.");
+    }
+  }
+
+  function buildPdfDoc(){
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit:"mm", format:"a4" });
+    var margin = 16;
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var pageHeight = doc.internal.pageSize.getHeight();
+    var colAmount = pageWidth - margin;
+    var y = margin;
+
+    function ensureSpace(need){
+      if(y + need > pageHeight - margin){
+        doc.addPage();
+        y = margin;
+      }
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("DAILY REPORT", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text("Reference No.: " + currentReportNumber, colAmount, y, { align:"right" });
+    y += 5;
+    doc.text("Generated: " + nowKL(), colAmount, y, { align:"right" });
+    y += 6;
+    doc.setDrawColor(180);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+
+    doc.setFontSize(10);
+    doc.text("Date: " + displayDate(state.reportDate), margin, y);
+    y += 5;
+    doc.text("Branch/Outlet: " + state.branch.trim(), margin, y);
+    y += 5;
+    doc.text("Prepared by: " + state.preparedBy.trim(), margin, y);
+    y += 8;
+
+    function sectionTitle(title){
+      ensureSpace(10);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text(title, margin, y);
+      y += 2;
+      doc.setLineWidth(0.3);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+    }
+
+    function dataRow(label, amount, bold){
+      ensureSpace(6);
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.text(String(label), margin, y);
+      doc.text(money(amount), colAmount, y, { align:"right" });
+      y += 6;
+    }
+
+    sectionTitle("1. SALES SUMMARY");
+    SALES_FIELDS.forEach(function(f){ dataRow(f.label, num(state.sales[f.key])); });
+    dataRow("TOTAL SALES OUTLET", totalSales(), true);
+    y += 3;
+
+    sectionTitle("2. PAYMENT BREAKDOWN");
+    PAYMENT_FIELDS.forEach(function(f){ dataRow(f.label, num(state.payment[f.key])); });
+    dataRow("TOTAL", totalPayment(), true);
+    y += 3;
+
+    sectionTitle("3. REFUNDS / DISCOUNTS");
+    var refundListed = false;
+    state.refunds.forEach(function(r){
+      if(r.orderId.trim() || num(r.amount) > 0){ dataRow(r.orderId.trim() || "-", num(r.amount)); refundListed = true; }
+    });
+    if(!refundListed) dataRow("No refunds", 0);
+    dataRow("TOTAL REFUND", totalRefund(), true);
+    y += 3;
+
+    sectionTitle("4. DAILY EXPENSES");
+    var expenseListed = false;
+    state.expenses.forEach(function(r){
+      if(r.item.trim() || num(r.amount) > 0){ dataRow(r.item.trim() || "-", num(r.amount)); expenseListed = true; }
+    });
+    if(!expenseListed) dataRow("No expenses", 0);
+    dataRow("TOTAL EXPENSES", totalExpenses(), true);
+    y += 3;
+
+    sectionTitle("5. CASHIER CLOSING");
+    dataRow("Opening Float", num(state.openingFloat));
+    dataRow("Cash Sales", num(state.payment.cash));
+    dataRow("Expenses", totalExpenses());
+    dataRow("Bank-in", num(state.bankIn));
+    dataRow("Refund", totalRefund());
+    ensureSpace(10);
+    y += 2;
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12.5);
+    doc.text("CLOSING FLOAT", margin, y);
+    doc.text(money(closingFloat()), colAmount, y, { align:"right" });
+
+    var receiptsToEmbed = state.expenses
+      .filter(function(r){ return r.receiptDataUrl && r.receiptWidth && r.receiptHeight; })
+      .map(function(r){ return { label:(r.item.trim() || "Expense") + " — " + money(num(r.amount)), dataUrl:r.receiptDataUrl, width:r.receiptWidth, height:r.receiptHeight }; });
+    if(state.bankInSlip && state.bankInSlip.width && state.bankInSlip.height){
+      receiptsToEmbed.push({ label:"Bank-in Slip — " + money(num(state.bankIn)), dataUrl:state.bankInSlip.dataUrl, width:state.bankInSlip.width, height:state.bankInSlip.height });
+    }
+    if(receiptsToEmbed.length){
+      doc.addPage();
+      y = margin;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("RECEIPT ATTACHMENTS", margin, y);
+      y += 3;
+      doc.setLineWidth(0.4);
+      doc.setDrawColor(180);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      var maxW = pageWidth - margin * 2;
+      var maxH = 110;
+      receiptsToEmbed.forEach(function(r, idx){
+        var aspect = r.height / r.width;
+        var w = maxW;
+        var h = w * aspect;
+        if(h > maxH){ h = maxH; w = h / aspect; }
+        ensureSpace(h + 14);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.text((idx + 1) + ". " + r.label, margin, y);
+        y += 4;
+        doc.addImage(r.dataUrl, imageFormatFromDataUrl(r.dataUrl), margin, y, w, h);
+        y += h + 10;
+      });
+    }
+
+    return doc;
+  }
+
+  function imageFormatFromDataUrl(dataUrl){
+    var m = /^data:image\/(\w+);/.exec(dataUrl);
+    if(!m) return "JPEG";
+    var type = m[1].toUpperCase();
+    return type === "JPG" ? "JPEG" : type;
+  }
+
+  function bindEvents(){
+    bindAmountFields("salesFields", state.sales);
+    bindAmountFields("paymentFields", state.payment);
+    bindRefundRows();
+    bindExpenseRows();
+    bindBankInSlip();
+
+    document.getElementById("reportDate").addEventListener("input", function(e){ state.reportDate = e.target.value; saveState(); });
+    document.getElementById("branch").addEventListener("input", function(e){ state.branch = e.target.value; saveState(); });
+    document.getElementById("preparedBy").addEventListener("input", function(e){ state.preparedBy = e.target.value; saveState(); });
+    document.getElementById("openingFloat").addEventListener("input", function(e){ state.openingFloat = num(e.target.value); saveState(); renderTotals(); });
+    document.getElementById("bankIn").addEventListener("input", function(e){ state.bankIn = num(e.target.value); saveState(); renderTotals(); });
+
+    document.getElementById("addRefundBtn").addEventListener("click", function(){
+      state.refunds.push({ orderId:"", amount:0 });
+      renderRefundRows();
+      saveState();
+    });
+    document.getElementById("addExpenseBtn").addEventListener("click", function(){
+      state.expenses.push({ item:"", amount:0 });
+      renderExpenseRows();
+      saveState();
+    });
+
+    document.getElementById("genReportBtn").addEventListener("click", generateReport);
+    document.getElementById("sharePdfBtn").addEventListener("click", shareReportPdf);
+    document.getElementById("downloadPdfBtn").addEventListener("click", downloadReportPdf);
+    document.getElementById("sendWaBtn").addEventListener("click", handleSendWaClick);
+    document.getElementById("editBtn").addEventListener("click", backToEdit);
+
+    if(navigator.canShare){
+      document.getElementById("sharePdfBtn").hidden = false;
+    }
+  }
+
+  function init(){
+    loadState();
+    if(!state.reportDate) state.reportDate = todayISO();
+    if(!state.branch) state.branch = "Ayam Gepuk Red Panda";
+
+    document.getElementById("reportDate").value = state.reportDate;
+    document.getElementById("branch").value = state.branch;
+    document.getElementById("preparedBy").value = state.preparedBy;
+    document.getElementById("openingFloat").value = state.openingFloat || "";
+    document.getElementById("bankIn").value = state.bankIn || "";
+
+    renderAmountFields("salesFields", SALES_FIELDS, state.sales);
+    renderAmountFields("paymentFields", PAYMENT_FIELDS, state.payment);
+    renderRefundRows();
+    renderExpenseRows();
+    if(state.bankInSlip && state.bankInSlip.dataUrl){
+      document.getElementById("bankInThumbSlot").innerHTML = receiptThumbHtml({ receiptDataUrl:state.bankInSlip.dataUrl });
+    }
+    renderTotals();
+    bindEvents();
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+})();
+</script>
+</body>
+</html>
