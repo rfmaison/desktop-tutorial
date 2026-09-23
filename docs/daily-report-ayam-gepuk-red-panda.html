@@ -92,6 +92,7 @@
   .scan-status{ font-size:12.5px; color:var(--ink-soft); }
   .scan-status.is-ok{ color:var(--green-dark); }
   .scan-status.is-warn{ color:var(--spice); }
+  .receipt-thumb-slot{ display:inline-flex; gap:6px; flex-wrap:wrap; }
   .receipt-thumb{ position:relative; display:inline-flex; }
   .receipt-thumb img{ width:56px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--line); display:block; }
   .receipt-remove{
@@ -183,7 +184,7 @@
     <h2 class="panel-title">4. Daily Expenses</h2>
     <div id="expenseRows"></div>
     <button class="add-row-btn" id="addExpenseBtn" type="button">+ Add Expense Row</button>
-    <p class="form-hint">Tip: tap "Scan Receipt" to auto-fill the item and amount from a photo, then verify before saving. The photo itself is kept and attached as a page at the end of the generated PDF report. Photos are processed on this device only and are never uploaded anywhere.</p>
+    <p class="form-hint">Tip: tap "Add Receipt Photo" to auto-fill the item and amount from the first photo, then verify before saving. Tap it again to attach more photos to the same expense (e.g. multiple receipt pages) — every photo is kept and attached as its own page at the end of the generated PDF report. Photos are processed on this device only and are never uploaded anywhere.</p>
     <div class="totals-box"><div class="totals-row"><span>Total Expenses</span><span class="t-amount" id="totalExpenseOut">RM 0.00</span></div></div>
 
     <h2 class="panel-title">5. Cashier Closing</h2>
@@ -292,20 +293,20 @@
   }
 
   var SALES_FIELDS = [
-    { key:"dineIn", label:"Dine-in" },
-    { key:"grab", label:"Delivery – GrabFood" },
-    { key:"foodpanda", label:"Delivery – Foodpanda" },
-    { key:"shopeefood", label:"Delivery – ShopeeFood" },
-    { key:"sellIngredient", label:"Sell Ingredient" },
-    { key:"event", label:"Event" },
-    { key:"catering", label:"Catering / Bulk Orders" }
+    { key:"dineIn", label:"Dine In" },
+    { key:"delivery", label:"Delivery" },
+    { key:"pickup", label:"Pickup" },
+    { key:"takeaway", label:"Takeaway" }
   ];
 
   var PAYMENT_FIELDS = [
-    { key:"cash", label:"Cash Sale" },
-    { key:"qr", label:"QR Sale" },
-    { key:"card", label:"Card Sale" },
-    { key:"others", label:"Others" }
+    { key:"cash", label:"Cash" },
+    { key:"duitnow", label:"DuitNow" },
+    { key:"foodpanda", label:"Food Panda" },
+    { key:"grabfood", label:"Grab Food" },
+    { key:"master", label:"Master" },
+    { key:"mydebit", label:"My Debit" },
+    { key:"visa", label:"Visa" }
   ];
 
   var STORAGE_KEY = "daily_report_draft_v2_en_agrp";
@@ -379,6 +380,13 @@
     return '<span class="receipt-thumb"><img src="' + entry.receiptDataUrl + '" alt="Receipt photo"><button type="button" class="receipt-remove" aria-label="Remove receipt photo">×</button></span>';
   }
 
+  function receiptThumbsHtml(entry){
+    var receipts = entry.receipts || [];
+    return receipts.map(function(r, ridx){
+      return '<span class="receipt-thumb" data-ridx="' + ridx + '"><img src="' + r.dataUrl + '" alt="Receipt photo"><button type="button" class="receipt-remove" aria-label="Remove this photo">×</button></span>';
+    }).join("");
+  }
+
   function renderExpenseRows(){
     var html = "";
     state.expenses.forEach(function(r, i){
@@ -390,9 +398,9 @@
         +     '<button class="row-remove" type="button" aria-label="Remove row">×</button>'
         +   '</div>'
         +   '<div class="expense-scan-row">'
-        +     '<label class="scan-btn">📷 Scan Receipt<input type="file" accept="image/*" capture="environment" class="ex-receipt-input" hidden></label>'
+        +     '<label class="scan-btn">📷 Add Receipt Photo<input type="file" accept="image/*" capture="environment" class="ex-receipt-input" hidden></label>'
         +     '<span class="scan-status"></span>'
-        +     '<span class="receipt-thumb-slot">' + receiptThumbHtml(r) + '</span>'
+        +     '<span class="receipt-thumb-slot">' + receiptThumbsHtml(r) + '</span>'
         +   '</div>'
         + '</div>';
     });
@@ -514,12 +522,11 @@
       var dataUrl = reader.result;
       var img = new Image();
       img.onload = function(){
-        state.expenses[index].receiptDataUrl = dataUrl;
-        state.expenses[index].receiptWidth = img.naturalWidth;
-        state.expenses[index].receiptHeight = img.naturalHeight;
+        if(!state.expenses[index].receipts) state.expenses[index].receipts = [];
+        state.expenses[index].receipts.push({ dataUrl:dataUrl, width:img.naturalWidth, height:img.naturalHeight });
         saveState();
         var block = document.querySelector('.expense-block[data-index="' + index + '"]');
-        if(block) block.querySelector(".receipt-thumb-slot").innerHTML = receiptThumbHtml(state.expenses[index]);
+        if(block) block.querySelector(".receipt-thumb-slot").innerHTML = receiptThumbsHtml(state.expenses[index]);
       };
       img.onerror = function(){
         setScanStatus(index, "Photo saved for scanning, but couldn't be attached as an image (unsupported format). Try a JPEG/PNG photo instead.", "warn");
@@ -529,13 +536,11 @@
     reader.readAsDataURL(file);
   }
 
-  function removeReceiptImage(index){
-    delete state.expenses[index].receiptDataUrl;
-    delete state.expenses[index].receiptWidth;
-    delete state.expenses[index].receiptHeight;
+  function removeReceiptImage(index, ridx){
+    if(state.expenses[index].receipts) state.expenses[index].receipts.splice(ridx, 1);
     saveState();
     var block = document.querySelector('.expense-block[data-index="' + index + '"]');
-    if(block) block.querySelector(".receipt-thumb-slot").innerHTML = "";
+    if(block) block.querySelector(".receipt-thumb-slot").innerHTML = receiptThumbsHtml(state.expenses[index]);
   }
 
   function handleReceiptFile(index, file){
@@ -555,13 +560,17 @@
         var parsed = parseReceiptText(result.data.text || "");
         var itemInput = block.querySelector(".ex-item");
         var amountInput = block.querySelector(".ex-amount");
+        var itemWasEmpty = !state.expenses[index].item.trim();
+        var amountWasEmpty = !num(state.expenses[index].amount);
 
-        if(parsed.vendor){ state.expenses[index].item = parsed.vendor; itemInput.value = parsed.vendor; }
-        if(parsed.amount !== null){ state.expenses[index].amount = parsed.amount; amountInput.value = parsed.amount; }
+        if(parsed.vendor && itemWasEmpty){ state.expenses[index].item = parsed.vendor; itemInput.value = parsed.vendor; }
+        if(parsed.amount !== null && amountWasEmpty){ state.expenses[index].amount = parsed.amount; amountInput.value = parsed.amount; }
         saveState();
         renderTotals();
 
-        if(parsed.vendor && parsed.amount !== null){
+        if(!itemWasEmpty && !amountWasEmpty){
+          setScanStatus(index, "Photo added. (Item/amount already filled, left unchanged.)", "ok");
+        }else if(parsed.vendor && parsed.amount !== null){
           setScanStatus(index, "Detected: " + parsed.vendor + " — " + money(parsed.amount) + ". Please verify.", "ok");
         }else if(parsed.amount !== null){
           setScanStatus(index, "Detected amount " + money(parsed.amount) + ". Please fill in the vendor name.", "warn");
@@ -674,7 +683,8 @@
       var removeBtn = e.target.closest(".receipt-remove");
       if(removeBtn){
         var receiptBlock = removeBtn.closest(".expense-block");
-        removeReceiptImage(parseInt(receiptBlock.getAttribute("data-index"), 10));
+        var thumb = removeBtn.closest(".receipt-thumb");
+        removeReceiptImage(parseInt(receiptBlock.getAttribute("data-index"), 10), parseInt(thumb.getAttribute("data-ridx"), 10));
         return;
       }
       var btn = e.target.closest(".row-remove");
@@ -998,9 +1008,17 @@
     doc.text("CLOSING FLOAT", margin, y);
     doc.text(money(closingFloat()), colAmount, y, { align:"right" });
 
-    var receiptsToEmbed = state.expenses
-      .filter(function(r){ return r.receiptDataUrl && r.receiptWidth && r.receiptHeight; })
-      .map(function(r){ return { label:(r.item.trim() || "Expense") + " — " + money(num(r.amount)), dataUrl:r.receiptDataUrl, width:r.receiptWidth, height:r.receiptHeight }; });
+    var receiptsToEmbed = [];
+    state.expenses.forEach(function(r){
+      var photos = r.receipts || [];
+      photos.forEach(function(photo, pIdx){
+        var baseLabel = (r.item.trim() || "Expense") + " — " + money(num(r.amount));
+        receiptsToEmbed.push({
+          label: photos.length > 1 ? baseLabel + " (" + (pIdx + 1) + "/" + photos.length + ")" : baseLabel,
+          dataUrl: photo.dataUrl, width: photo.width, height: photo.height
+        });
+      });
+    });
     if(state.bankInSlip && state.bankInSlip.width && state.bankInSlip.height){
       receiptsToEmbed.push({ label:"Bank-in Slip — " + money(num(state.bankIn)), dataUrl:state.bankInSlip.dataUrl, width:state.bankInSlip.width, height:state.bankInSlip.height });
     }
