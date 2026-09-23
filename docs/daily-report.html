@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Daily Report</title>
+<title>Ayam Gepuk Pak Gendut</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -146,7 +146,7 @@
 
   <header class="ticket-header">
     <div class="ticket-header__mark">📋</div>
-    <h1 class="brand">Daily Report</h1>
+    <h1 class="brand">Ayam Gepuk Pak Gendut</h1>
     <p class="tagline">Daily Sales Report &amp; Cashier Closing</p>
   </header>
 
@@ -263,7 +263,7 @@
       <a class="btn btn--outline" id="sendWaBtn" href="#" target="_blank" rel="noopener noreferrer">Send Report Text · WhatsApp</a>
       <button class="btn btn--outline" id="editBtn" type="button">Back to Edit</button>
     </div>
-    <p class="form-hint no-print">A copy of every generated report is automatically sent to RF Maison management for record-keeping.</p>
+    <p class="form-hint no-print">A copy of every generated report is automatically sent to management for record-keeping.</p>
   </section>
 
 </div>
@@ -308,7 +308,7 @@
     { key:"others", label:"Others" }
   ];
 
-  var STORAGE_KEY = "daily_report_draft_v2_en";
+  var STORAGE_KEY = "daily_report_draft_v2_en_agpg";
   var state = {
     reportDate:"", branch:"", preparedBy:"",
     sales:{}, payment:{},
@@ -1081,6 +1081,7 @@
   function init(){
     loadState();
     if(!state.reportDate) state.reportDate = todayISO();
+    if(!state.branch) state.branch = "Ayam Gepuk Pak Gendut";
 
     document.getElementById("reportDate").value = state.reportDate;
     document.getElementById("branch").value = state.branch;
