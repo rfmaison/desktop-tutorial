@@ -56,7 +56,7 @@ def col(df,*keys):
         if c.strip().lower() in keys: return df[c]
     return pd.Series(['']*len(df),index=df.index)
 HDR=['email','email','email','phone','phone','phone','madid','fn','ln','zip','ct','st','country','dob','doby','gen','age','uid','value']
-wb=Workbook(); wb.remove(wb.active); summary=[]
+wb=Workbook(); wb.remove(wb.active); summary=[]; allrows=[]
 for name,df in pd.read_excel(SRC,sheet_name=None,dtype=str).items():
     df=df.dropna(how='all'); c=df.columns
     fa=col(df,"father's/guardian's name","father's name"); mo=col(df,"mother's name"); gu=col(df,'name (guardian)','emergency contact')
@@ -81,13 +81,14 @@ for name,df in pd.read_excel(SRC,sheet_name=None,dtype=str).items():
         if info: dob,doby,age=info[0].isoformat(),str(info[0].year),str(info[1]); gen=info[2]
         z,ct,st=addr(ad[i])
         rows.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+['',fn,ln,z,ct,st,'MY',dob,doby,gen,age,'','']))
-    rows=list(dict.fromkeys(rows))
-    ws=wb.create_sheet(name.strip()[:31]); ws.append(HDR)
-    for rr in rows: ws.append([v if v!='' else None for v in rr])
-    for cell in ws[1]: cell.font=Font(name='Arial',bold=True,color='FFFFFF'); cell.fill=PatternFill('solid',fgColor='1877F2')
-    for row in ws.iter_rows(min_row=2):
-        for cell in row: cell.font=Font(name='Arial'); cell.number_format='@'
-    for k,w in enumerate([30,30,30,15,15,15,8,20,22,8,20,16,9,12,7,6,6,6,7],1): ws.column_dimensions[get_column_letter(k)].width=w
-    ws.freeze_panes='A2'
+    allrows+=rows
     summary.append((name.strip(),len(rows)))
-wb.save(OUT); print(summary, sum(n for _,n in summary))
+allrows=list(dict.fromkeys(allrows))  # one tab for all centres, duplicates across centres removed
+ws=wb.create_sheet('ALL CENTRES'); ws.append(HDR)
+for rr in allrows: ws.append([v if v!='' else None for v in rr])
+for cell in ws[1]: cell.font=Font(name='Arial',bold=True,color='FFFFFF'); cell.fill=PatternFill('solid',fgColor='1877F2')
+for row in ws.iter_rows(min_row=2):
+    for cell in row: cell.font=Font(name='Arial'); cell.number_format='@'
+for k,w in enumerate([30,30,30,15,15,15,8,20,22,8,20,16,9,12,7,6,6,6,7],1): ws.column_dimensions[get_column_letter(k)].width=w
+ws.freeze_panes='A2'
+wb.save(OUT); print(summary, 'total before dedupe:', sum(n for _,n in summary), 'final rows:', len(allrows))

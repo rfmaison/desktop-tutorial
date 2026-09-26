@@ -24,9 +24,9 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 ## Rules
 
-- One output tab per centre tab, same tab name.
+- All centre tabs are compiled into a single tab `ALL CENTRES`.
 - Name / MyKad come from the parent who owns the main email or phone; otherwise the father.
-- Rows with no email and no phone are removed; identical rows (siblings) are de-duplicated.
+- Rows with no email and no phone are removed; identical rows (siblings, or the same family in two centres) are de-duplicated.
 - Everything else (child name, IC numbers, salary, address text…) is not exported.
 - On Meta upload: choose date format `YYYY-MM-DD`; set `madid`, `uid`, `value` to "Do not upload".
 
