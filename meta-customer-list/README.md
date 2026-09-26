@@ -32,6 +32,9 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
     Columns are matched by header name, so other orders work too (repeated PHONE NO / I/C NO / EMAIL = father first,
     mother second). A tab may repeat its header row part-way down. With a single EMAIL column the email is given to the
     parent whose name it resembles (default father).
+  - **2024 student-list layout** (e.g. Skyawani): header `Bil | Student Name | Student IC No. | Class Names | Address |
+    Parents 1: Mobile | Parents 1: Name | Parents 1: IC No. | Parents 1: Email | Parents 2: …`. Parent 1 / Parent 2 are
+    treated as the two parents; `gen` then comes only from the MyKad or BIN/BINTI in the name, never from the slot.
 - Name / MyKad come from the parent who owns the main email or phone (2024 layout: father if he has an email, else mother); otherwise the father.
 - Rows with no email and no phone are removed; rows sharing any email or phone (siblings, same family in two tabs) are merged, keeping the most complete row.
 - If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.

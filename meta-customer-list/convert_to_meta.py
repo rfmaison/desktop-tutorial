@@ -64,9 +64,16 @@ def col(df,*keys):
 HDR=['email','email','email','phone','phone','phone','madid','fn','ln','zip','ct','st','country','dob','doby','gen','age','uid','value']
 MAIN_COLS=['E-mail','E-mail Father','E-mail Mother','Phone Father','Phone Mother']
 
+HEADS=('NAME','STUDENT NAME')
+
 def header_map(h):
     """Column positions from a class-tab header row. Repeated PHONE NO / I/C NO / EMAIL columns are
     father's first, mother's second; a single EMAIL column is the family email."""
+    if 'STUDENT NAME' in h:  # "Parents 1: Mobile | Parents 1: Name | Parents 1: IC No. | Parents 1: Email | Parents 2: ..."
+        f=lambda lab: h.index(lab) if lab in h else None
+        return dict(name=f('STUDENT NAME'),addr=f('ADDRESS'),roles=False,
+                    fa=f('PARENTS 1: NAME'),fap=f('PARENTS 1: MOBILE'),faic=f('PARENTS 1: IC NO.'),fae=f('PARENTS 1: EMAIL'),
+                    mo=f('PARENTS 2: NAME'),mop=f('PARENTS 2: MOBILE'),moic=f('PARENTS 2: IC NO.'),moe=f('PARENTS 2: EMAIL'))
     m={'name':h.index('NAME')}
     for k,lab in (('addr','ADDRESS'),('fa',"FATHER'S NAME"),('mo',"MOTHER'S NAME")):
         m[k]=h.index(lab) if lab in h else None
@@ -94,14 +101,14 @@ def read_sheets(path):
         NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL
     """
     for name,raw in pd.read_excel(path,sheet_name=None,header=None,dtype=object).items():
-        hi=next((i for i,r in raw.iterrows() if any(s(v).upper()=='NAME' for v in r.iloc[:3])),None)
+        hi=next((i for i,r in raw.iterrows() if any(s(v).upper() in HEADS for v in r.iloc[:3])),None)
         if hi is None:  # full database layout
             df=pd.read_excel(path,sheet_name=name,dtype=object).dropna(how='all')
             yield name,df; continue
         recs=[]; m=None
         for _,r in raw.iloc[hi:].iterrows():
             vals=[s(v) for v in r]
-            if any(v.upper()=='NAME' for v in vals[:3]):  # (repeated) header row: map columns by name
+            if any(v.upper() in HEADS for v in vals[:3]):  # (repeated) header row: map columns by name
                 m=header_map([v.upper() for v in vals]); continue
             g=lambda k: vals[m[k]] if m.get(k) is not None and m[k]<len(vals) else ''
             v={k:g(k) for k in ('name','addr','fa','fae','fap','faic','mo','moe','mop','moic','fame')}
@@ -111,10 +118,11 @@ def read_sheets(path):
             if v['fame'] and not fe and not me:  # one family email column: give it to the parent it looks like
                 fe,me=('',v['fame']) if owner(v['fame'],v['fa'],v['mo'])=='m' else (v['fame'],'')
             main=email(fe) or email(me)  # prefer the parent who has an email, father first
-            recs.append({'E-mail':main,'E-mail Father':fe,'E-mail Mother':me,
+            recs.append({'Roles':'n' if m.get('roles') is False else '','E-mail':main,'E-mail Father':fe,'E-mail Mother':me,
                          'Phone Father':v['fap'],'Phone Mother':v['mop'],"Father's Name":v['fa'],'I/C No':v['faic'],
                          "Mother's Name":v['mo'],'I/C No.1':v['moic'],'Address':v['addr']})
-        yield name,pd.DataFrame(recs,columns=MAIN_COLS+["Father's Name",'I/C No',"Mother's Name",'I/C No.1','Address'])
+        df=pd.DataFrame(recs,columns=['Roles']+MAIN_COLS+["Father's Name",'I/C No',"Mother's Name",'I/C No.1','Address'])
+        yield name,df[MAIN_COLS+[c for c in df.columns if c not in MAIN_COLS]]
 
 def convert(df):
     df=df.fillna(''); c=df.columns
@@ -136,7 +144,7 @@ def convert(df):
         nm,icv={'f':(fa[i],fic[i]),'m':(mo[i],mic[i]),'g':(gu[i],gic[i])}[who]
         fn,ln=split(nm); info=ic(icv)
         dob,doby,age='','',''
-        gen={'f':'m','m':'f'}.get(who,'') if s(nm) else ''
+        gen={'f':'m','m':'f'}.get(who,'') if s(nm) and s(col(df,'roles')[i])!='n' else ''
         ng=name_gen(nm)
         if ng: gen=ng
         if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
