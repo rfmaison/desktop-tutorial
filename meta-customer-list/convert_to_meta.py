@@ -125,43 +125,88 @@ def read_sheets(path):
         yield name,df[MAIN_COLS+[c for c in df.columns if c not in MAIN_COLS]]
 
 def convert(df):
+    """One row per parent (father and mother separately), each with only that person's details."""
     df=df.fillna(''); c=df.columns
     fa=col(df,"father's/guardian's name","father's name"); mo=col(df,"mother's name"); gu=col(df,'name (guardian)','emergency contact')
     fic=col(df,'mykad','i/c no'); mic=col(df,'mykad.1','i/c no.1'); gic=col(df,'mykad.2')
-    ad=col(df,'address'); pr=col(df,'primary phone'); gp=col(df,'phone')
+    ad=col(df,'address'); pr=col(df,'primary phone'); gp=col(df,'phone'); roles=col(df,'roles')
     rows=[]
     for i in df.index:
-        r=df.loc[i]; ems=[email(r[c[k]]) for k in range(3)]
-        e=list(dict.fromkeys(x for x in ems if x))[:3]
-        pf,pm,pp=phone(r[c[3]]),phone(r[c[4]]),phone(pr[i])
-        p=list(dict.fromkeys(x for x in [pf,pm,pp,phone(gp[i])] if x))[:3]
-        if not e and not p: continue
-        pe=ems[0]
-        if pe and pe==ems[2] and pe!=ems[1] and s(mo[i]): who='m'
-        elif pe and pe==ems[1] and s(fa[i]): who='f'
-        elif not pe and pp and pp==pm and s(mo[i]): who='m'
-        else: who='f' if s(fa[i]) else 'm' if s(mo[i]) else 'g'
-        nm,icv={'f':(fa[i],fic[i]),'m':(mo[i],mic[i]),'g':(gu[i],gic[i])}[who]
-        fn,ln=split(nm); info=ic(icv)
-        dob,doby,age='','',''
-        gen={'f':'m','m':'f'}.get(who,'') if s(nm) and s(col(df,'roles')[i])!='n' else ''
-        ng=name_gen(nm)
-        if ng: gen=ng
-        if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
-        if info: dob,doby,age=info[0].isoformat(),str(info[0].year),str(info[1]); gen=info[2]
+        r=df.loc[i]
+        F=dict(role='f',name=s(fa[i]),ic=fic[i],em=[email(r[c[1]])],ph=[phone(r[c[3]])])
+        M=dict(role='m',name=s(mo[i]),ic=mic[i],em=[email(r[c[2]])],ph=[phone(r[c[4]])])
+        if s(roles[i])=='n': F['role']=M['role']=''  # "Parents 1/2": slot says nothing about gender
+        # an email both parents share goes to the one it resembles; a shared phone stays with parent 1
+        e=F['em'][0]
+        if e and e==M['em'][0]:
+            (M if owner(e,F['name'],M['name'])=='m' else F)['em']=[e]; (F if owner(e,F['name'],M['name'])=='m' else M)['em']=['']
+        if F['ph'][0] and F['ph'][0]==M['ph'][0]: M['ph']=['']
+        # main email / primary phone that neither parent column holds: give to the parent it resembles
+        pe=email(r[c[0]])
+        if pe and pe not in F['em']+M['em']: (M if owner(pe,F['name'],M['name'])=='m' else F)['em'].append(pe)
+        pp=phone(pr[i])
+        if pp and pp not in F['ph']+M['ph']: (F if not F['ph'][0] else M)['ph'].append(pp)
+        people=[F,M]
+        if not any(x for P in people for x in P['em']+P['ph']):  # no parent contact: use guardian / emergency
+            people=[dict(role='',name=s(gu[i]),ic=gic[i],em=[],ph=[phone(gp[i])])]
         z,ct,st=addr(ad[i])
-        rows.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+['',fn,ln,z,ct,st,'MY',dob,doby,gen,age,'','']))
+        for P in people:
+            e=[x for x in dict.fromkeys(P['em']) if x][:3]; p=[x for x in dict.fromkeys(P['ph']) if x][:3]
+            if not e and not p: continue
+            nm=P['name']; fn,ln=split(nm); info=ic(P['ic'])
+            gen={'f':'m','m':'f'}.get(P['role'],'') if nm else ''
+            ng=name_gen(nm)
+            if ng: gen=ng
+            if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
+            dob=doby=age=''
+            if info: dob,doby,age=info[0].isoformat(),str(info[0].year),str(info[1]); gen=info[2]
+            rows.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+['',fn,ln,z,ct,st,'MY',dob,doby,gen,age,'','']))
     return rows
 
 def dedupe(rows):
-    """One row per family: rows sharing any email or phone are merged into the most complete one."""
-    best={}; key_of={}
-    for r in rows:
-        ids=[x for x in r[:6] if x]
-        k=next((key_of[x] for x in ids if x in key_of),None) or ids[0]
-        for x in ids: key_of.setdefault(x,k)
-        if k not in best or sum(bool(v) for v in r)>sum(bool(v) for v in best[k]): best[k]=r
-    return list(dict.fromkeys(best.values()))
+    """One row per person: rows sharing an email, a phone, or the same full name (2+ words) are merged,
+    keeping every email/phone (max 3 each) and the first non-empty value of the other fields."""
+    par=list(range(len(rows)))
+    def find(x):
+        while par[x]!=x: par[x]=par[par[x]]; x=par[x]
+        return x
+    who={i:{(re.sub(r'[^a-z]','',r[7].lower())[:4],r[15])} for i,r in enumerate(rows)}  # (name start, gen) per group
+    def ok(a,b):  # never merge two different people (father + mother sharing a phone)
+        for n1,g1 in who[a]:
+            for n2,g2 in who[b]:
+                if (g1 and g2 and g1!=g2) or (n1 and n2 and n1!=n2): return False
+        return True
+    seen={}
+    for i,r in enumerate(rows):
+        keys=[x for x in r[:6] if x]
+        full=(r[7]+' '+r[8]).strip().lower()
+        if len(full.split())>=2: keys.append('name:'+full)
+        for k in keys:
+            if k in seen:
+                a,b=find(i),find(seen[k])
+                if a!=b and ok(a,b): par[a]=b; who[b]|=who.pop(a)
+            else: seen[k]=i
+    groups={}
+    for i in range(len(rows)): groups.setdefault(find(i),[]).append(rows[i])
+    out=[]
+    for g in groups.values():
+        g=sorted(g,key=lambda r:-sum(bool(v) for v in r))  # most complete row first
+        e=[x for x in dict.fromkeys(v for r in g for v in r[0:3]) if x][:3]
+        p=[x for x in dict.fromkeys(v for r in g for v in r[3:6]) if x][:3]
+        rest=[next((r[k] for r in g if r[k]),'') for k in range(6,19)]
+        if g[0][13]: rest[7:11]=list(g[0][13:17])  # keep dob/doby/gen/age together from one MyKad
+        out.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+rest))
+    # an email/phone left on two people's rows (shared family phone): keep it only where it is the row's only contact
+    cnt={}
+    for r in out:
+        for x in r[:6]:
+            if x: cnt[x]=cnt.get(x,0)+1
+    fixed=[]
+    for r in out:
+        keep=[x for x in r[:6] if x and cnt[x]==1]
+        e=[x for x in r[0:3] if x and (cnt[x]==1 or not keep)]; p=[x for x in r[3:6] if x and (cnt[x]==1 or not keep)]
+        fixed.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+list(r[6:])))
+    return fixed
 
 def write(rows,tab,out):
     wb=Workbook(); ws=wb.active; ws.title=tab[:31]; ws.append(HDR)
@@ -182,12 +227,13 @@ if __name__=='__main__':
     ap=argparse.ArgumentParser(description='Convert centre databases to the Meta customer list format.')
     ap.add_argument('inputs',nargs='+',help='.xlsx files; each one becomes its own output file with one tab')
     ap.add_argument('-o','--outdir',default='.',help='folder for the output files')
+    ap.add_argument('--suffix',default='',help="added to the end of each output file name, e.g. _v2")
     a=ap.parse_args()
     for path in a.inputs:
         rows=[]; per=[]
         for name,df in read_sheets(path):
             r=convert(df); rows+=r; per.append((name.strip(),len(r)))
-        rows=dedupe(rows)  # siblings / same family in two tabs
-        lab=label(path); out=os.path.join(a.outdir,'META_'+lab.replace(' ','_')+'.xlsx')
+        rows=dedupe(rows)  # same parent listed for several children / tabs
+        lab=label(path); out=os.path.join(a.outdir,'META_'+lab.replace(' ','_')+a.suffix+'.xlsx')
         write(rows,lab,out)
         print(f'{out}: {len(rows)} rows  (per tab before de-dupe: {per})')

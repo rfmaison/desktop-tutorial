@@ -6,8 +6,8 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 | Col | Header | Content |
 |---|---|---|
-| A–C | `email` ×3 | Parent emails: main, father, mother. Lowercase, no duplicates in a row, invalid ones dropped |
-| D–F | `phone` ×3 | Father, mother, primary (or guardian/emergency) phone, formatted `+60XXXXXXXXX` |
+| A–C | `email` ×3 | That parent's email(s). Lowercase, invalid ones dropped |
+| D–F | `phone` ×3 | That parent's phone(s), formatted `+60XXXXXXXXX` |
 | G | `madid` | Empty |
 | H | `fn` | Parent first name (part before BIN/BINTI/BT/A/L/A/P, else first word) |
 | I | `ln` | Parent last name (part after BIN/BINTI, else remaining words) |
@@ -24,6 +24,9 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 ## Rules
 
+- **One row per parent (v2):** father and mother each get their own row with only their own email, phone, name
+  and MyKad details. Guardian / emergency contact is used only when neither parent has an email or phone.
+
 - Each input file becomes its own output file (`META_<CENTRE>.xlsx`) with a single tab; all tabs of that file are compiled into it.
 - Two input layouts are recognised automatically:
   - **Full database**: one tab per centre, header in row 1 (`E-mail`, `E-mail Father`, `E-mail Mother`, `Phone Father`, `Phone Mother`, …).
@@ -35,8 +38,10 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
   - **2024 student-list layout** (e.g. Skyawani): header `Bil | Student Name | Student IC No. | Class Names | Address |
     Parents 1: Mobile | Parents 1: Name | Parents 1: IC No. | Parents 1: Email | Parents 2: …`. Parent 1 / Parent 2 are
     treated as the two parents; `gen` then comes only from the MyKad or BIN/BINTI in the name, never from the slot.
-- Name / MyKad come from the parent who owns the main email or phone (2024 layout: father if he has an email, else mother); otherwise the father.
-- Rows with no email and no phone are removed; rows sharing any email or phone (siblings, same family in two tabs) are merged, keeping the most complete row.
+- Rows with no email and no phone are removed. The same person listed for several children/tabs is merged into one row
+  (shared email, phone or full name), but rows with different names or genders are never merged.
+- An email both parents share goes to the parent it resembles; a phone typed for both parents is kept only on the row
+  that has no other contact.
 - If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.
 - Everything else (child name, IC numbers, salary, address text…) is not exported.
 - On Meta upload: choose date format `YYYY-MM-DD`; set `madid`, `uid`, `value` to "Do not upload".
@@ -45,7 +50,7 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 ```bash
 pip install pandas openpyxl
-python convert_to_meta.py FILE1.xlsx [FILE2.xlsx ...] -o OUTPUT_FOLDER
+python convert_to_meta.py FILE1.xlsx [FILE2.xlsx ...] -o OUTPUT_FOLDER --suffix _v2
 ```
 
 Do not commit the input or output spreadsheets — they contain personal data.
