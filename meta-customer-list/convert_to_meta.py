@@ -238,6 +238,7 @@ def dedupe(rows):
         keep=[x for x in r[:6] if x and cnt[x]==1]
         use=lambda x: x and (home[x]==j if x in home else (cnt[x]==1 or not keep))
         e=[x for x in r[0:3] if use(x)]; p=[x for x in r[3:6] if use(x)]
+        if not e and not p: e=[x for x in r[0:3] if x]; p=[x for x in r[3:6] if x]  # never leave a row empty
         fixed.append([e,p,list(r[6:])])
     # never lose an identifier completely: if every row dropped it, put it back on its first row
     kept={x for e,p,_ in fixed for x in e+p}
