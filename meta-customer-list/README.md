@@ -50,6 +50,8 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 ```bash
 pip install pandas openpyxl
 python convert_to_meta.py FILE1.xlsx [FILE2.xlsx ...] -o OUTPUT_FOLDER --suffix _v2
+# full database with one tab per centre -> one file per centre (META_<CENTRE>_2026_v2.xlsx)
+python convert_to_meta.py DATABASE_FULL.xlsx --per-tab --suffix _2026_v2 -o OUTPUT_FOLDER
 ```
 
 Do not commit the input or output spreadsheets — they contain personal data.

@@ -227,9 +227,16 @@ if __name__=='__main__':
     ap=argparse.ArgumentParser(description='Convert centre databases to the Meta customer list format.')
     ap.add_argument('inputs',nargs='+',help='.xlsx files; each one becomes its own output file with one tab')
     ap.add_argument('-o','--outdir',default='.',help='folder for the output files')
+    ap.add_argument('--per-tab',action='store_true',help='one output file per tab (e.g. one per centre) instead of one per input file')
     ap.add_argument('--suffix',default='',help="added to the end of each output file name, e.g. _v2")
     a=ap.parse_args()
     for path in a.inputs:
+        if a.per_tab:  # every tab (centre) becomes its own file
+            for name,df in read_sheets(path):
+                rows=dedupe(convert(df)); lab=re.sub(r'\s+',' ',name).strip().upper()
+                out=os.path.join(a.outdir,'META_'+lab.replace(' ','_')+a.suffix+'.xlsx')
+                write(rows,lab,out); print(f'{out}: {len(rows)} rows')
+            continue
         rows=[]; per=[]
         for name,df in read_sheets(path):
             r=convert(df); rows+=r; per.append((name.strip(),len(r)))
