@@ -24,9 +24,14 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 ## Rules
 
-- All centre tabs are compiled into a single tab `ALL CENTRES`.
-- Name / MyKad come from the parent who owns the main email or phone; otherwise the father.
-- Rows with no email and no phone are removed; identical rows (siblings, or the same family in two centres) are de-duplicated.
+- Each input file becomes its own output file (`META_<CENTRE>.xlsx`) with a single tab; all tabs of that file are compiled into it.
+- Two input layouts are recognised automatically:
+  - **Full database**: one tab per centre, header in row 1 (`E-mail`, `E-mail Father`, `E-mail Mother`, `Phone Father`, `Phone Mother`, …).
+  - **2024 class database** (`HH_DATABASE_<CENTRE>.xlsx`): one tab per class (6YO … QURANIC), title block on top, then
+    `NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL`.
+- Name / MyKad come from the parent who owns the main email or phone (2024 layout: father if he has an email, else mother); otherwise the father.
+- Rows with no email and no phone are removed; rows sharing any email or phone (siblings, same family in two tabs) are merged, keeping the most complete row.
+- If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.
 - Everything else (child name, IC numbers, salary, address text…) is not exported.
 - On Meta upload: choose date format `YYYY-MM-DD`; set `madid`, `uid`, `value` to "Do not upload".
 
@@ -34,7 +39,7 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 ```bash
 pip install pandas openpyxl
-python convert_to_meta.py DATABASE_FULL.xlsx DATABASE_META_UPLOAD.xlsx
+python convert_to_meta.py FILE1.xlsx [FILE2.xlsx ...] -o OUTPUT_FOLDER
 ```
 
 Do not commit the input or output spreadsheets — they contain personal data.

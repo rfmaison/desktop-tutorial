@@ -2,12 +2,13 @@ import re, datetime, pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
-import sys
-SRC=sys.argv[1]  # centre database .xlsx (one tab per centre)
-OUT=sys.argv[2] if len(sys.argv)>2 else 'DATABASE_META_UPLOAD.xlsx'
+import sys, os, argparse
 TODAY=datetime.date.today()
 EMRE=re.compile(r'^[\w.+\-]+@[\w\-]+(\.[\w\-]+)+$')
-def s(x): return '' if pd.isna(x) else str(x).strip()
+def s(x):
+    if x is None or (isinstance(x,float) and pd.isna(x)): return ''
+    if isinstance(x,float) and x.is_integer(): x=int(x)  # numbers typed into Excel (IC, phone)
+    return str(x).strip()
 def email(x):
     x=s(x).lower().replace(' ','');  return x if EMRE.match(x) else ''
 def phone(x):
@@ -23,6 +24,11 @@ def split(n):
         if t.upper().rstrip('.') in SEP and 0<i<len(w)-1:
             return ' '.join(w[:i]).title(),' '.join(w[i+1:]).title()
     return (w[0].title(),' '.join(w[1:]).title()) if len(w)>1 else (w[0].title(),'')
+def name_gen(n):
+    t={w.rstrip('.') for w in s(n).upper().split()}
+    if t & {'BINTI','BT','BTE','BINTE','A/P'}: return 'f'
+    if t & {'BIN','A/L'}: return 'm'
+    return ''
 def ic(x):
     d=re.sub(r'\D','',s(x))
     if len(d)!=12: return None
@@ -56,9 +62,37 @@ def col(df,*keys):
         if c.strip().lower() in keys: return df[c]
     return pd.Series(['']*len(df),index=df.index)
 HDR=['email','email','email','phone','phone','phone','madid','fn','ln','zip','ct','st','country','dob','doby','gen','age','uid','value']
-wb=Workbook(); wb.remove(wb.active); summary=[]; allrows=[]
-for name,df in pd.read_excel(SRC,sheet_name=None,dtype=str).items():
-    df=df.dropna(how='all'); c=df.columns
+MAIN_COLS=['E-mail','E-mail Father','E-mail Mother','Phone Father','Phone Mother']
+
+def read_sheets(path):
+    """Yield (tab name, DataFrame) in the 'full database' column layout.
+
+    Supports two layouts:
+      * full database: one tab per centre, header in row 1 (E-mail, E-mail Father, E-mail Mother,
+        Phone Father, Phone Mother, ... Father's Name, MyKad/I/C No, Mother's Name, ...)
+      * 2024 class database: one tab per class, title block on top, then a header row
+        NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL
+    """
+    for name,raw in pd.read_excel(path,sheet_name=None,header=None,dtype=object).items():
+        hi=next((i for i,r in raw.iterrows() if any(s(v).upper()=='NAME' for v in r.iloc[:3])),None)
+        if hi is None:  # full database layout
+            df=pd.read_excel(path,sheet_name=name,dtype=object).dropna(how='all')
+            yield name,df; continue
+        h=[s(v).upper() for v in raw.iloc[hi]]
+        b=h.index('NAME'); cols={k:b+o for k,o in dict(name=0,addr=2,fa=3,fae=4,fap=5,faic=6,mo=7,mop=8,moic=9,moe=10).items()}
+        recs=[]
+        for _,r in raw.iloc[hi+1:].iterrows():
+            v={k:s(r.iloc[j]) if j<len(r) else '' for k,j in cols.items()}
+            if not any(v[k] for k in ('fa','fae','fap','mo','mop','moe')): continue
+            if 'TOTAL' in v['name'].upper(): continue
+            main=email(v['fae']) or email(v['moe'])  # prefer the parent who has an email, father first
+            recs.append({'E-mail':main,'E-mail Father':v['fae'],'E-mail Mother':v['moe'],
+                         'Phone Father':v['fap'],'Phone Mother':v['mop'],"Father's Name":v['fa'],'I/C No':v['faic'],
+                         "Mother's Name":v['mo'],'I/C No.1':v['moic'],'Address':v['addr']})
+        yield name,pd.DataFrame(recs,columns=MAIN_COLS+["Father's Name",'I/C No',"Mother's Name",'I/C No.1','Address'])
+
+def convert(df):
+    df=df.fillna(''); c=df.columns
     fa=col(df,"father's/guardian's name","father's name"); mo=col(df,"mother's name"); gu=col(df,'name (guardian)','emergency contact')
     fic=col(df,'mykad','i/c no'); mic=col(df,'mykad.1','i/c no.1'); gic=col(df,'mykad.2')
     ad=col(df,'address'); pr=col(df,'primary phone'); gp=col(df,'phone')
@@ -78,17 +112,49 @@ for name,df in pd.read_excel(SRC,sheet_name=None,dtype=str).items():
         fn,ln=split(nm); info=ic(icv)
         dob,doby,age='','',''
         gen={'f':'m','m':'f'}.get(who,'') if s(nm) else ''
+        ng=name_gen(nm)
+        if ng: gen=ng
+        if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
         if info: dob,doby,age=info[0].isoformat(),str(info[0].year),str(info[1]); gen=info[2]
         z,ct,st=addr(ad[i])
         rows.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+['',fn,ln,z,ct,st,'MY',dob,doby,gen,age,'','']))
-    allrows+=rows
-    summary.append((name.strip(),len(rows)))
-allrows=list(dict.fromkeys(allrows))  # one tab for all centres, duplicates across centres removed
-ws=wb.create_sheet('ALL CENTRES'); ws.append(HDR)
-for rr in allrows: ws.append([v if v!='' else None for v in rr])
-for cell in ws[1]: cell.font=Font(name='Arial',bold=True,color='FFFFFF'); cell.fill=PatternFill('solid',fgColor='1877F2')
-for row in ws.iter_rows(min_row=2):
-    for cell in row: cell.font=Font(name='Arial'); cell.number_format='@'
-for k,w in enumerate([30,30,30,15,15,15,8,20,22,8,20,16,9,12,7,6,6,6,7],1): ws.column_dimensions[get_column_letter(k)].width=w
-ws.freeze_panes='A2'
-wb.save(OUT); print(summary, 'total before dedupe:', sum(n for _,n in summary), 'final rows:', len(allrows))
+    return rows
+
+def dedupe(rows):
+    """One row per family: rows sharing any email or phone are merged into the most complete one."""
+    best={}; key_of={}
+    for r in rows:
+        ids=[x for x in r[:6] if x]
+        k=next((key_of[x] for x in ids if x in key_of),None) or ids[0]
+        for x in ids: key_of.setdefault(x,k)
+        if k not in best or sum(bool(v) for v in r)>sum(bool(v) for v in best[k]): best[k]=r
+    return list(dict.fromkeys(best.values()))
+
+def write(rows,tab,out):
+    wb=Workbook(); ws=wb.active; ws.title=tab[:31]; ws.append(HDR)
+    for rr in rows: ws.append([v if v!='' else None for v in rr])
+    for cell in ws[1]: cell.font=Font(name='Arial',bold=True,color='FFFFFF'); cell.fill=PatternFill('solid',fgColor='1877F2')
+    for row in ws.iter_rows(min_row=2):
+        for cell in row: cell.font=Font(name='Arial'); cell.number_format='@'
+    for k,w in enumerate([30,30,30,15,15,15,8,20,22,8,20,16,9,12,7,6,6,6,7],1): ws.column_dimensions[get_column_letter(k)].width=w
+    ws.freeze_panes='A2'; wb.save(out)
+
+def label(path):
+    n=os.path.splitext(os.path.basename(path))[0]
+    n=re.sub(r'^[0-9a-f]{8}-','',n)            # upload prefix
+    n=re.sub(r'HH_DATABASE|DATABASE','',n,flags=re.I)
+    return re.sub(r'[_\s]+',' ',n).strip().upper() or 'ALL CENTRES'
+
+if __name__=='__main__':
+    ap=argparse.ArgumentParser(description='Convert centre databases to the Meta customer list format.')
+    ap.add_argument('inputs',nargs='+',help='.xlsx files; each one becomes its own output file with one tab')
+    ap.add_argument('-o','--outdir',default='.',help='folder for the output files')
+    a=ap.parse_args()
+    for path in a.inputs:
+        rows=[]; per=[]
+        for name,df in read_sheets(path):
+            r=convert(df); rows+=r; per.append((name.strip(),len(r)))
+        rows=dedupe(rows)  # siblings / same family in two tabs
+        lab=label(path); out=os.path.join(a.outdir,'META_'+lab.replace(' ','_')+'.xlsx')
+        write(rows,lab,out)
+        print(f'{out}: {len(rows)} rows  (per tab before de-dupe: {per})')
