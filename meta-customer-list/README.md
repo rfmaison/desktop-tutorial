@@ -27,7 +27,7 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 - **One row per parent (v2):** father and mother each get their own row with only their own email, phone, name
   and MyKad details. Guardian / emergency contact is used only when neither parent has an email or phone.
 - Each input file becomes its own output file (`META_<CENTRE>.xlsx`) with a single tab; all tabs of that file are compiled into it.
-- Three input layouts are recognised automatically:
+- Four input layouts are recognised automatically:
   - **Full database**: one tab per centre, header in row 1 (`E-mail`, `E-mail Father`, `E-mail Mother`, `Phone Father`, `Phone Mother`, …).
   - **2024 class database** (`HH_DATABASE_<CENTRE>.xlsx`): one tab per class (6YO … QURANIC), title block on top, then
     `NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL`.
@@ -37,9 +37,15 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
   - **2024 student-list layout** (e.g. Skyawani): header `Bil | Student Name | Student IC No. | Class Names | Address |
     Parents 1: Mobile | Parents 1: Name | Parents 1: IC No. | Parents 1: Email | Parents 2: …`. Parent 1 / Parent 2 are
     treated as the two parents; `gen` then comes only from the MyKad or BIN/BINTI in the name, never from the slot.
+  - **2025 contact list**: already one person per row, header `Phone | Email | First Name | Last Name | Business Name |
+    Source | Additional Emails | Additional Phones | Notes | Tags` (or `NO | NAME | EMAIL | CONTACT NUMBER | TAGS`).
+    First/last name are used as given; occupation, source, notes and tags are not exported. No MyKad or address, so
+    zip/ct/st/dob/doby/age stay empty.
 - Rows with no email and no phone are removed. The same person listed for several children/tabs is merged into one row
   (shared email, phone or full name), but rows with different names or genders are never merged.
-- An email both parents share goes to the parent it resembles; a phone typed for both parents is kept only on the row
+- If `gen` is still unknown, a clearly male (Muhammad, Mohd, Ahmad, Abdul, Syed…) or female (Siti, Nurul, Sharifah,
+  Puteri…) first name decides it; otherwise it stays blank.
+- An email both parents share goes to the parent it resembles; no email/phone is ever dropped from every row; a phone typed for both parents is kept only on the row
   that has no other contact.
 - If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.
 - Everything else (child name, IC numbers, salary, address text…) is not exported.

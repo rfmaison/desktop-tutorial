@@ -29,6 +29,12 @@ def name_gen(n):
     if t & {'BINTI','BT','BTE','BINTE','A/P'}: return 'f'
     if t & {'BIN','A/L'}: return 'm'
     return ''
+MALE_FIRST={'MUHAMMAD','MUHAMAD','MUHAMMED','MOHAMMAD','MOHAMAD','MOHAMMED','MOHAMED','MOHD','MUHD','MD','AHMAD','AHMED','ABDUL','ABD','SYED','MEGAT'}
+FEMALE_FIRST={'SITI','NURUL','NOORUL','SHARIFAH','SYARIFAH','PUTERI','NORUL'}
+def first_gen(n):
+    """Last-resort gender from a clearly male / female Malay first name."""
+    w=s(n).upper().replace('.',' ').split()
+    return 'm' if w and w[0] in MALE_FIRST else 'f' if w and w[0] in FEMALE_FIRST else ''
 def ic(x):
     d=re.sub(r'\D','',s(x))
     if len(d)!=12: return None
@@ -101,6 +107,21 @@ def read_sheets(path):
         NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL
     """
     for name,raw in pd.read_excel(path,sheet_name=None,header=None,dtype=object).items():
+        ci=next((i for i,r in raw.iterrows() if {'PHONE','FIRST NAME'}<={s(v).upper() for v in r}
+                 or {'NAME','CONTACT NUMBER'}<={s(v).upper() for v in r}),None)
+        if ci is not None:  # contact list: one person per row already (2025 layout)
+            h=[s(v).upper() for v in raw.iloc[ci]]; g=lambda r,k: s(r.iloc[h.index(k)]) if k in h else ''
+            recs=[]
+            for _,r in raw.iloc[ci+1:].iterrows():
+                full=g(r,'NAME'); fn,ln=(g(r,'FIRST NAME'),g(r,'LAST NAME')) if 'FIRST NAME' in h else split(full)
+                e=[g(r,'EMAIL')]+re.split(r'[,;\s]+',g(r,'ADDITIONAL EMAILS') or g(r,'ADDIONAL EMAILS'))
+                p=[g(r,'PHONE') or g(r,'CONTACT NUMBER')]+re.split(r'[,;/]+',g(r,'ADDITIONAL PHONES') or g(r,'ADDIONAL PHONES'))
+                if not any(e+p+[fn,full]): continue
+                recs.append({'Roles':'n','E-mail':'','E-mail Father':' '.join(x for x in e if x),'E-mail Mother':'',
+                             'Phone Father':p[0],'Phone Mother':'','Extra Phones':'|'.join(p[1:]),
+                             "Father's Name":full or (fn+' '+ln).strip(),'fn':fn.strip().title(),'ln':ln.strip().title()})
+            df=pd.DataFrame(recs,columns=MAIN_COLS+['Roles','Extra Phones',"Father's Name",'fn','ln'])
+            yield name,df; continue
         hi=next((i for i,r in raw.iterrows() if any(s(v).upper() in HEADS for v in r.iloc[:3])),None)
         if hi is None:  # full database layout
             df=pd.read_excel(path,sheet_name=name,dtype=object).dropna(how='all')
@@ -133,7 +154,9 @@ def convert(df):
     rows=[]
     for i in df.index:
         r=df.loc[i]
-        F=dict(role='f',name=s(fa[i]),ic=fic[i],em=[email(r[c[1]])],ph=[phone(r[c[3]])])
+        F=dict(role='f',name=s(fa[i]),ic=fic[i],em=[email(x) for x in s(r[c[1]]).split(' ')] or [''],
+               ph=[phone(r[c[3]])]+[phone(x) for x in s(col(df,'extra phones')[i]).split('|') if x],
+               fn=s(col(df,'fn')[i]),ln=s(col(df,'ln')[i]))
         M=dict(role='m',name=s(mo[i]),ic=mic[i],em=[email(r[c[2]])],ph=[phone(r[c[4]])])
         if s(roles[i])=='n': F['role']=M['role']=''  # "Parents 1/2": slot says nothing about gender
         # an email both parents share goes to the one it resembles; a shared phone stays with parent 1
@@ -154,12 +177,14 @@ def convert(df):
             e=[x for x in dict.fromkeys(P['em']) if x][:3]; p=[x for x in dict.fromkeys(P['ph']) if x][:3]
             if not e and not p: continue
             nm=P['name']; fn,ln=split(nm); info=ic(P['ic'])
+            if P.get('fn') or P.get('ln'): fn,ln=P.get('fn',''),P.get('ln','')
             gen={'f':'m','m':'f'}.get(P['role'],'') if nm else ''
             ng=name_gen(nm)
             if ng: gen=ng
             if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
             dob=doby=age=''
             if info: dob,doby,age=info[0].isoformat(),str(info[0].year),str(info[1]); gen=info[2]
+            if not gen: gen=first_gen(nm)
             rows.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+['',fn,ln,z,ct,st,'MY',dob,doby,gen,age,'','']))
     return rows
 
@@ -201,12 +226,25 @@ def dedupe(rows):
     for r in out:
         for x in r[:6]:
             if x: cnt[x]=cnt.get(x,0)+1
+    home={}  # shared email -> the row whose name it resembles
+    for x in cnt:
+        if cnt[x]>1 and '@' in x:
+            loc=re.sub(r'[^a-z]','',x.split('@')[0])
+            sc=[(sum(len(w) for w in re.findall(r'[a-z]{4,}',(r[7]+' '+r[8]).lower()) if w in loc),j) for j,r in enumerate(out) if x in r[:6]]
+            best=max(sc)
+            if best[0]>0 and [v for v,_ in sc].count(best[0])==1: home[x]=best[1]
     fixed=[]
-    for r in out:
+    for j,r in enumerate(out):
         keep=[x for x in r[:6] if x and cnt[x]==1]
-        e=[x for x in r[0:3] if x and (cnt[x]==1 or not keep)]; p=[x for x in r[3:6] if x and (cnt[x]==1 or not keep)]
-        fixed.append(tuple(e+['']*(3-len(e))+p+['']*(3-len(p))+list(r[6:])))
-    return fixed
+        use=lambda x: x and (home[x]==j if x in home else (cnt[x]==1 or not keep))
+        e=[x for x in r[0:3] if use(x)]; p=[x for x in r[3:6] if use(x)]
+        fixed.append([e,p,list(r[6:])])
+    # never lose an identifier completely: if every row dropped it, put it back on its first row
+    kept={x for e,p,_ in fixed for x in e+p}
+    for j,r in enumerate(out):
+        for k,x in enumerate(r[:6]):
+            if x and x not in kept: (fixed[j][0] if k<3 else fixed[j][1]).append(x); kept.add(x)
+    return [tuple(e[:3]+['']*(3-len(e[:3]))+p[:3]+['']*(3-len(p[:3]))+rest) for e,p,rest in fixed]
 
 def write(rows,tab,out):
     wb=Workbook(); ws=wb.active; ws.title=tab[:31]; ws.append(HDR)
