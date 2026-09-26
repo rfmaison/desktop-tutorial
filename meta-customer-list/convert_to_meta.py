@@ -52,7 +52,7 @@ def addr(a):
     if st in ('Kuala Lumpur','Putrajaya','Labuan'): return z,st,st
     ct=re.split(r'[,.]',a[m.end():].strip(' ,.'))[0]
     ct=re.sub(STWORDS,'',ct,flags=re.I); ct=re.sub(r'\s+',' ',ct).strip(' ,.-')
-    FIX={'Jphor':'','Badnar Baru Bangi':'Bandar Baru Bangi','Sha Alam':'Shah Alam','Shaha Alam':'Shah Alam','Shsh Alam':'Shah Alam',
+    FIX={'Jphor':'','Badnar Baru Bangi':'Bandar Baru Bangi','Sha Alam':'Shah Alam','Shaha Alam':'Shah Alam','Cyber':'Cyberjaya','Paka Dungun':'Paka','Shsh Alam':'Shah Alam',
          'Seksyen 8 Shah Alam':'Shah Alam','Sg Buloh':'Sungai Buloh','Batu Caves Gombak':'Batu Caves',
          'Kg Jawa Klang':'Klang','Jalan Besar Sungai Tua Tanah Gantian':''}
     ct=ct.title(); ct=FIX.get(ct,ct)
