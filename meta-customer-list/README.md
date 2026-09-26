@@ -29,6 +29,9 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
   - **Full database**: one tab per centre, header in row 1 (`E-mail`, `E-mail Father`, `E-mail Mother`, `Phone Father`, `Phone Mother`, …).
   - **2024 class database** (`HH_DATABASE_<CENTRE>.xlsx`): one tab per class (6YO … QURANIC), title block on top, then
     `NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL`.
+    Columns are matched by header name, so other orders work too (repeated PHONE NO / I/C NO / EMAIL = father first,
+    mother second). A tab may repeat its header row part-way down. With a single EMAIL column the email is given to the
+    parent whose name it resembles (default father).
 - Name / MyKad come from the parent who owns the main email or phone (2024 layout: father if he has an email, else mother); otherwise the father.
 - Rows with no email and no phone are removed; rows sharing any email or phone (siblings, same family in two tabs) are merged, keeping the most complete row.
 - If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.

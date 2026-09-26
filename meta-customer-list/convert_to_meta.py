@@ -52,7 +52,7 @@ def addr(a):
     if st in ('Kuala Lumpur','Putrajaya','Labuan'): return z,st,st
     ct=re.split(r'[,.]',a[m.end():].strip(' ,.'))[0]
     ct=re.sub(STWORDS,'',ct,flags=re.I); ct=re.sub(r'\s+',' ',ct).strip(' ,.-')
-    FIX={'Jphor':'','Badnar Baru Bangi':'Bandar Baru Bangi','Sha Alam':'Shah Alam','Shsh Alam':'Shah Alam',
+    FIX={'Jphor':'','Badnar Baru Bangi':'Bandar Baru Bangi','Sha Alam':'Shah Alam','Shaha Alam':'Shah Alam','Shsh Alam':'Shah Alam',
          'Seksyen 8 Shah Alam':'Shah Alam','Sg Buloh':'Sungai Buloh','Batu Caves Gombak':'Batu Caves',
          'Kg Jawa Klang':'Klang','Jalan Besar Sungai Tua Tanah Gantian':''}
     ct=ct.title(); ct=FIX.get(ct,ct)
@@ -63,6 +63,26 @@ def col(df,*keys):
     return pd.Series(['']*len(df),index=df.index)
 HDR=['email','email','email','phone','phone','phone','madid','fn','ln','zip','ct','st','country','dob','doby','gen','age','uid','value']
 MAIN_COLS=['E-mail','E-mail Father','E-mail Mother','Phone Father','Phone Mother']
+
+def header_map(h):
+    """Column positions from a class-tab header row. Repeated PHONE NO / I/C NO / EMAIL columns are
+    father's first, mother's second; a single EMAIL column is the family email."""
+    m={'name':h.index('NAME')}
+    for k,lab in (('addr','ADDRESS'),('fa',"FATHER'S NAME"),('mo',"MOTHER'S NAME")):
+        m[k]=h.index(lab) if lab in h else None
+    ph=[i for i,x in enumerate(h) if x.startswith('PHONE')]; ic_=[i for i,x in enumerate(h) if x.startswith('I/C')]
+    em=[i for i,x in enumerate(h) if x.startswith('EMAIL') or x.startswith('E-MAIL')]
+    m.update(fap=ph[0] if ph else None, mop=ph[1] if len(ph)>1 else None,
+             faic=ic_[0] if ic_ else None, moic=ic_[1] if len(ic_)>1 else None)
+    if len(em)>1: m.update(fae=em[0],moe=em[1])
+    elif em: m['fame']=em[0]
+    return m
+
+def owner(e,fa,mo):
+    """'f' or 'm': which parent's name the email address resembles (default father)."""
+    loc=re.sub(r'[^a-z]','',e.lower().split('@')[0])
+    sc=lambda n: sum(len(w) for w in re.findall(r'[a-z]{4,}',s(n).lower()) if w not in ('binti','bin','mohd','muhammad','mohamad','mohammad','nurul','siti') and w in loc)
+    return 'm' if sc(mo)>sc(fa) else 'f'
 
 def read_sheets(path):
     """Yield (tab name, DataFrame) in the 'full database' column layout.
@@ -78,15 +98,20 @@ def read_sheets(path):
         if hi is None:  # full database layout
             df=pd.read_excel(path,sheet_name=name,dtype=object).dropna(how='all')
             yield name,df; continue
-        h=[s(v).upper() for v in raw.iloc[hi]]
-        b=h.index('NAME'); cols={k:b+o for k,o in dict(name=0,addr=2,fa=3,fae=4,fap=5,faic=6,mo=7,mop=8,moic=9,moe=10).items()}
-        recs=[]
-        for _,r in raw.iloc[hi+1:].iterrows():
-            v={k:s(r.iloc[j]) if j<len(r) else '' for k,j in cols.items()}
-            if not any(v[k] for k in ('fa','fae','fap','mo','mop','moe')): continue
-            if 'TOTAL' in v['name'].upper(): continue
-            main=email(v['fae']) or email(v['moe'])  # prefer the parent who has an email, father first
-            recs.append({'E-mail':main,'E-mail Father':v['fae'],'E-mail Mother':v['moe'],
+        recs=[]; m=None
+        for _,r in raw.iloc[hi:].iterrows():
+            vals=[s(v) for v in r]
+            if any(v.upper()=='NAME' for v in vals[:3]):  # (repeated) header row: map columns by name
+                m=header_map([v.upper() for v in vals]); continue
+            g=lambda k: vals[m[k]] if m.get(k) is not None and m[k]<len(vals) else ''
+            v={k:g(k) for k in ('name','addr','fa','fae','fap','faic','mo','moe','mop','moic','fame')}
+            if not any(v[k] for k in ('fa','fae','fap','mo','mop','moe','fame')): continue
+            if 'TOTAL' in ' '.join(vals).upper(): continue
+            fe,me=v['fae'],v['moe']
+            if v['fame'] and not fe and not me:  # one family email column: give it to the parent it looks like
+                fe,me=('',v['fame']) if owner(v['fame'],v['fa'],v['mo'])=='m' else (v['fame'],'')
+            main=email(fe) or email(me)  # prefer the parent who has an email, father first
+            recs.append({'E-mail':main,'E-mail Father':fe,'E-mail Mother':me,
                          'Phone Father':v['fap'],'Phone Mother':v['mop'],"Father's Name":v['fa'],'I/C No':v['faic'],
                          "Mother's Name":v['mo'],'I/C No.1':v['moic'],'Address':v['addr']})
         yield name,pd.DataFrame(recs,columns=MAIN_COLS+["Father's Name",'I/C No',"Mother's Name",'I/C No.1','Address'])
