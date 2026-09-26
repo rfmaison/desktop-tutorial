@@ -26,9 +26,8 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
 
 - **One row per parent (v2):** father and mother each get their own row with only their own email, phone, name
   and MyKad details. Guardian / emergency contact is used only when neither parent has an email or phone.
-
 - Each input file becomes its own output file (`META_<CENTRE>.xlsx`) with a single tab; all tabs of that file are compiled into it.
-- Two input layouts are recognised automatically:
+- Three input layouts are recognised automatically:
   - **Full database**: one tab per centre, header in row 1 (`E-mail`, `E-mail Father`, `E-mail Mother`, `Phone Father`, `Phone Mother`, …).
   - **2024 class database** (`HH_DATABASE_<CENTRE>.xlsx`): one tab per class (6YO … QURANIC), title block on top, then
     `NAME | MY KID NO | ADDRESS | FATHER'S NAME | EMAIL | PHONE NO | I/C NO | MOTHER'S NAME | PHONE NO | I/C NO | EMAIL`.
