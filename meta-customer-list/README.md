@@ -43,9 +43,12 @@ Format for uploading the centre parent database to Meta (Facebook) Ads as a Cust
     zip/ct/st/dob/doby/age stay empty.
 - Rows with no email and no phone are removed. The same person listed for several children/tabs is merged into one row
   (shared email, phone or full name), but rows with different names or genders are never merged.
+- An email/phone typed for 3+ different people (e.g. an office number) is dropped; it identifies nobody.
+- Spelling variants of one parent (shared email/phone and a shared name word) are merged; a MyKad whose gender
+  contradicts a clearly gendered first name (Siti, Muhammad…) is ignored as belonging to the spouse.
 - If `gen` is still unknown, a clearly male (Muhammad, Mohd, Ahmad, Abdul, Syed…) or female (Siti, Nurul, Sharifah,
   Puteri…) first name decides it; otherwise it stays blank.
-- An email both parents share goes to the parent it resembles; no email/phone is ever dropped from every row; a phone typed for both parents is kept only on the row
+- An email both parents share goes to the parent it resembles, else to the one it is listed under most often; no email/phone is ever dropped from every row; a phone typed for both parents is kept only on the row
   that has no other contact.
 - If the name says BIN/BINTI and the MyKad gender does not match, the MyKad is ignored (it belongs to the other parent) and `gen` follows the name.
 - Everything else (child name, IC numbers, salary, address text…) is not exported.

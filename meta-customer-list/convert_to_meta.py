@@ -179,7 +179,7 @@ def convert(df):
             nm=P['name']; fn,ln=split(nm); info=ic(P['ic'])
             if P.get('fn') or P.get('ln'): fn,ln=P.get('fn',''),P.get('ln','')
             gen={'f':'m','m':'f'}.get(P['role'],'') if nm else ''
-            ng=name_gen(nm)
+            ng=name_gen(nm) or first_gen(nm)
             if ng: gen=ng
             if info and ng and info[2]!=ng: info=None  # IC belongs to the other parent (mixed-up columns)
             dob=doby=age=''
@@ -191,15 +191,34 @@ def convert(df):
 def dedupe(rows):
     """One row per person: rows sharing an email, a phone, or the same full name (2+ words) are merged,
     keeping every email/phone (max 3 each) and the first non-empty value of the other fields."""
-    par=list(range(len(rows)))
     def find(x):
         while par[x]!=x: par[x]=par[par[x]]; x=par[x]
         return x
-    who={i:{(re.sub(r'[^a-z]','',r[7].lower())[:4],r[15])} for i,r in enumerate(rows)}  # (name start, gen) per group
+    COMMON={'muhammad','muhamad','mohammad','mohamad','mohammed','mohamed','mohd','muhd','ahmad','abdul','siti','nurul',
+            'binti','bint','abdullah','noor','noorul','norul','puteri','sharifah','syarifah','wan','nik','megat','syed','raja'}
+    def words(r): return frozenset(w for w in re.findall(r'[a-z]{4,}',(r[7]+' '+r[8]).lower()) if w not in COMMON)
+    # an email/phone typed for 3+ different people (office / centre number) identifies nobody: drop it
+    owners={}
+    for r in rows:
+        w=words(r)
+        for x in r[:6]:
+            if x and w: owners.setdefault(x,set()).add(w)
+    def people(ws):  # spellings sharing a real name word count as one person
+        groups=[]
+        for w in ws:
+            hit=[g for g in groups if g&w]
+            for g in hit: groups.remove(g)
+            groups.append(frozenset(w).union(*hit))
+        return len(groups)
+    bad={x for x,n in owners.items() if people(n)>=3}
+    rows=[tuple([x if x not in bad else '' for x in r[:6]]+list(r[6:])) for r in rows]
+    rows=[r for r in rows if any(r[:6])]
+    par=list(range(len(rows)))
+    who={i:{(words(r),r[15])} for i,r in enumerate(rows)}  # (name words, gen) per group
     def ok(a,b):  # never merge two different people (father + mother sharing a phone)
         for n1,g1 in who[a]:
             for n2,g2 in who[b]:
-                if (g1 and g2 and g1!=g2) or (n1 and n2 and n1!=n2): return False
+                if (g1 and g2 and g1!=g2) or (n1 and n2 and not n1&n2): return False
         return True
     seen={}
     for i,r in enumerate(rows):
@@ -213,8 +232,13 @@ def dedupe(rows):
             else: seen[k]=i
     groups={}
     for i in range(len(rows)): groups.setdefault(find(i),[]).append(rows[i])
-    out=[]
+    out=[]; support=[]  # support[j][x]: how many source rows of output row j carry identifier x
     for g in groups.values():
+        sup={}
+        for r in g:
+            for x in set(r[:6]):
+                if x: sup[x]=sup.get(x,0)+1
+        support.append(sup)
         g=sorted(g,key=lambda r:-sum(bool(v) for v in r))  # most complete row first
         e=[x for x in dict.fromkeys(v for r in g for v in r[0:3]) if x][:3]
         p=[x for x in dict.fromkeys(v for r in g for v in r[3:6]) if x][:3]
@@ -232,7 +256,11 @@ def dedupe(rows):
             loc=re.sub(r'[^a-z]','',x.split('@')[0])
             sc=[(sum(len(w) for w in re.findall(r'[a-z]{4,}',(r[7]+' '+r[8]).lower()) if w in loc),j) for j,r in enumerate(out) if x in r[:6]]
             best=max(sc)
-            if best[0]>0 and [v for v,_ in sc].count(best[0])==1: home[x]=best[1]
+            if best[0]>0 and [v for v,_ in sc].count(best[0])==1: home[x]=best[1]; continue
+    for x in cnt:  # otherwise: the person it is listed under most often across the sources
+        if cnt[x]>1 and x not in home:
+            sp=sorted(((support[j].get(x,0),j) for j,r in enumerate(out) if x in r[:6]),reverse=True)
+            if sp[0][0]>sp[1][0]: home[x]=sp[0][1]
     fixed=[]
     for j,r in enumerate(out):
         keep=[x for x in r[:6] if x and cnt[x]==1]
