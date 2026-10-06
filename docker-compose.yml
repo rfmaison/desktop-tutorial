@@ -1,0 +1,11 @@
+services:
+  inventory:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      ACCESS_PIN: "change-me"      # PIN staff type in the web app
+      API_KEY: "change-me-too"     # key for your POS / scripts
+    volumes:
+      - ./data:/data

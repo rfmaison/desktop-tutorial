@@ -1,0 +1,13 @@
+{
+  "name": "red-panda-inventory",
+  "version": "1.0.0",
+  "description": "Self-hosted inventory with barcode auto key-in and live counting for Red Panda",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "license": "MIT"
+}

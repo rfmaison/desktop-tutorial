@@ -1,0 +1,4 @@
+# HTTPS reverse proxy (needed for the phone camera scanner). Replace the domain.
+inventory.example.com {
+	reverse_proxy 127.0.0.1:3000
+}

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#c2410c">
+  <title>Red Panda Inventory</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="icon.svg" alt="" width="28" height="28"><span>Red Panda <b>Inventory</b></span></div>
+    <div class="stats">
+      <span class="stat"><b id="statItems">0</b> items</span>
+      <span class="stat warn" id="statLowWrap"><b id="statLow">0</b> low</span>
+      <span class="live" id="live" title="Live connection"><i></i><span id="liveText">connecting…</span></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button data-tab="scan" class="active">Scan</button>
+    <button data-tab="stock">Stock</button>
+    <button data-tab="count">Live count</button>
+    <button data-tab="history">History</button>
+  </nav>
+
+  <main>
+    <!-- SCAN: auto key-in -->
+    <section id="tab-scan" class="tab active">
+      <div class="modes" role="radiogroup" aria-label="Scan mode">
+        <button data-mode="in" class="mode in active">＋ Stock in</button>
+        <button data-mode="out" class="mode out">− Stock out</button>
+        <button data-mode="count" class="mode set">= Set qty</button>
+      </div>
+      <form id="scanForm" class="scanbox">
+        <label class="qty">Qty<input id="scanQty" type="number" inputmode="decimal" value="1" min="0" step="any"></label>
+        <input id="scanInput" class="scan" placeholder="Scan barcode or type SKU, then Enter" autocomplete="off" autofocus>
+        <button type="submit" hidden></button>
+        <button type="button" class="btn cam" id="camBtn" title="Scan with camera">📷</button>
+      </form>
+      <p class="hint">USB / Bluetooth barcode scanner: just scan — it keys in automatically. Phone: tap 📷.</p>
+      <div id="camWrap" class="cam-wrap hidden"><video id="camVideo" playsinline muted></video><button class="btn" id="camStop">Stop camera</button></div>
+      <div id="lastScan" class="last hidden"></div>
+      <h3>Recent scans</h3>
+      <ul id="scanLog" class="feed"></ul>
+    </section>
+
+    <!-- STOCK list -->
+    <section id="tab-stock" class="tab">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search name, barcode, SKU, category">
+        <label class="chk"><input type="checkbox" id="lowOnly"> Low only</label>
+        <button class="btn primary" id="addBtn">+ New item</button>
+        <a class="btn" id="exportBtn" href="#">Export CSV</a>
+        <label class="btn">Import CSV<input type="file" id="importFile" accept=".csv,text/csv" hidden></label>
+      </div>
+      <div class="table-wrap">
+        <table class="items">
+          <thead><tr><th>Item</th><th>Barcode / SKU</th><th class="num">On hand</th><th class="num">Min</th><th></th></tr></thead>
+          <tbody id="itemRows"></tbody>
+        </table>
+      </div>
+      <p id="emptyStock" class="empty hidden">No items yet. Scan something on the Scan tab or press “+ New item”.</p>
+    </section>
+
+    <!-- LIVE COUNT (stocktake) -->
+    <section id="tab-count" class="tab">
+      <p class="hint">Stocktake: every phone/scanner on this screen adds to the same live count. When done, press <b>Apply count</b> to set stock to the counted numbers.</p>
+      <form id="countForm" class="scanbox">
+        <label class="qty">+<input id="countQty" type="number" inputmode="decimal" value="1" step="any"></label>
+        <input id="countInput" class="scan" placeholder="Scan to count +1" autocomplete="off">
+        <button type="submit" hidden></button>
+        <button type="button" class="btn cam" id="camBtn2" title="Scan with camera">📷</button>
+      </form>
+      <div class="toolbar">
+        <span id="countSummary" class="muted"></span>
+        <span class="grow"></span>
+        <button class="btn" id="countClear">Discard count</button>
+        <button class="btn primary" id="countCommit">Apply count</button>
+      </div>
+      <div class="table-wrap">
+        <table class="items">
+          <thead><tr><th>Item</th><th class="num">Counted</th><th class="num">System</th><th class="num">Diff</th><th></th></tr></thead>
+          <tbody id="countRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="tab-history" class="tab">
+      <div class="table-wrap">
+        <table class="items">
+          <thead><tr><th>Time</th><th>Item</th><th>Type</th><th class="num">Change</th><th class="num">After</th><th>Note / source</th></tr></thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Item editor -->
+  <dialog id="itemDlg">
+    <form method="dialog" id="itemForm">
+      <h2 id="itemDlgTitle">New item</h2>
+      <label>Name<input name="name" required></label>
+      <div class="row">
+        <label>Barcode<input name="barcode" autocomplete="off"></label>
+        <label>SKU<input name="sku"></label>
+      </div>
+      <div class="row">
+        <label>Category<input name="category" list="categories"></label>
+        <label>Unit<input name="unit" placeholder="pcs, kg, bottle…"></label>
+      </div>
+      <div class="row">
+        <label id="qtyLabel">Opening qty<input name="qty" type="number" step="any" value="0"></label>
+        <label>Low-stock alert at<input name="min_qty" type="number" step="any" value="0"></label>
+      </div>
+      <datalist id="categories"></datalist>
+      <p class="err" id="itemErr"></p>
+      <div class="actions">
+        <button type="button" class="btn danger hidden" id="deleteBtn">Delete</button>
+        <span class="grow"></span>
+        <button value="cancel" class="btn" formnovalidate>Cancel</button>
+        <button value="save" class="btn primary" id="saveBtn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- PIN -->
+  <dialog id="pinDlg">
+    <form method="dialog" id="pinForm">
+      <h2>Enter PIN</h2>
+      <input id="pinInput" type="password" inputmode="numeric" autocomplete="current-password" required>
+      <p class="err" id="pinErr"></p>
+      <div class="actions"><span class="grow"></span><button class="btn primary">Unlock</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

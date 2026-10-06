@@ -1,0 +1,9 @@
+{
+  "name": "Red Panda Inventory",
+  "short_name": "Inventory",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf7f5",
+  "theme_color": "#c2410c",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

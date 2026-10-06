@@ -1,0 +1,18 @@
+# systemd unit. Copy to /etc/systemd/system/, edit paths + PIN, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now red-panda-inventory
+[Unit]
+Description=Red Panda Inventory
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/red-panda-inventory
+ExecStart=/usr/bin/node --no-warnings server.js
+Environment=PORT=3000
+Environment=ACCESS_PIN=change-me
+Environment=API_KEY=change-me-too
+Environment=DB_FILE=/opt/red-panda-inventory/data/inventory.db
+Restart=always
+User=www-data
+
+[Install]
+WantedBy=multi-user.target

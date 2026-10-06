@@ -1,0 +1,6 @@
+name,barcode,sku,category,unit,qty,min_qty
+Tapioca pearls,8850000000011,TP-01,Ingredients,kg,12,5
+Brown sugar syrup,8850000000028,BS-01,Ingredients,bottle,8,4
+Fresh milk,8850000000035,MK-01,Dairy,litre,20,10
+Cup 500ml,8850000000042,CP-500,Packaging,pcs,600,200
+Straw (boba),8850000000059,ST-01,Packaging,pcs,1000,300
